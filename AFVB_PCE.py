@@ -7,264 +7,195 @@
 """
 Author: 
 Date: 
-
-Contains classes for Chaos expansions, Exponential families (containing Beta, Bernoulli, Gauss and Gamma),
-Optimizer for the standard RVM and sparse RVM.
 """
 
-__all__ = ['ChaosModel', 'AFVB_PCE']
+__all__ = ['AFVB_PCE']
 
 import numpy as np
-import matplotlib.pyplot as plt
-import scipy.special as special
-from scipy.special import legendre
 import math
 from itertools import product
 from scipy.special import gamma
 import sys
+from sklearn.base import BaseEstimator
+from sklearn.metrics import mean_squared_error
 
-
-class ChaosModel(object):
-    """
-    dim: number of variables
-    order: max degree
-    """
-
-    _dim = None
-
-    _order = None
+class AFVB_PCE(BaseEstimator):
     
-    # _basis_MI needs to be a function that takes the multi-indexes 
-    # and can be evaluated at the xi's
-    _basis = None
     
-    _basis_shape = None
-
-    _coeffs = None
-    
-    # Only works for total degree (TD)
-    #def __init__(self, dim, order, basis_MI, coeffs = None, trunc = 'TD', q = None):
-    def __init__(self, dim, order, basis, basis_shape, coeffs = None):
+    def __init__(self, basis, p = 8, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000):
         """
         Initializes the object
         """
-        assert isinstance(dim, int)
-        assert isinstance(order, int)
-        self._dim = dim
-        self._order = order
-        self._basis = basis
-        self._basis_shape = basis_shape
-
-        if coeffs is None:
-            self._coeffs = np.zeros(self._basis_shape[0])
-        else:
-            assert self._basis_shape[0] == coeffs.shape[0]
-            self._coeffs = coeffs
+        
+        self.p = p
+        self.A_0 = A_0
+        self.B_0 = B_0
+        self.C_0 = C_0
+        self.D_0 = D_0
+        
+        self.T_L = T_L
+        self.eps = eps
+        self.basis = basis
+        
+    def fit(self, X, Y):
+        
+        Phi_in = self.basis(X, self.p)
+        self.N = Phi_in.shape[0]
+        self.n = Phi_in.shape[1]
+     
             
-    ### Evaluates the spectral representation of f (Eq. 5)
-    ### Need to save coefficients first
-    def eval(self, xi, active_indices = None):
-        if active_indices is None:
-            return np.dot(self._basis(xi), self._coeffs)
-        else:
-            return np.dot(self._basis(xi)[:, active_indices], self._coeffs[active_indices])
+        ########################################
+        #### Compute initial E_theta[Theta] ####
+        ########################################
+        E_Theta = np.zeros((self.n, self.n))
+
+        for i in range(self.n):
+            E_Theta[i,i] = self.C_0/self.D_0
+
+        #### Compute A_r and C_r
+        A_r = self.A_0 + self.N/2
+        C_r = self.C_0 + 1/2
+
+        #### List that keeps track of L_beta values and corresponding Beta value
+        L_beta = []
+
+        ### An array made in order to keep track of which column numbers
+        ### Phi_hat kept in the end
+        col_full = []
+        col = np.array(range(0,Phi_in.shape[1]))
+        col_full.append(col)
+        
+        Beta = 1
+        L_old = None
+
+        Phi = Phi_in
+        while Phi.shape[1] > 1: ## Beta 
+            n = Phi.shape[1]
+
+            e_L = sys.float_info.max
+            r = 1
+
+            while e_L > self.T_L:
+                ###############################
+                #### Compute chi_r and a_r ####
+                ###############################
+
+                #### chi_r
+                chi_r_inv = np.zeros((n, n))
+
+                for i in range(self.N):
+                    chi_r_inv += np.c_[Phi[i,:]]@np.c_[Phi[i,:]].transpose()
+
+                chi_r_inv += E_Theta
+                chi_r = np.linalg.inv(chi_r_inv)
 
 
-# In[3]:
+                #### a_r
+                chi_r_inv_times_a_r = np.zeros((n, 1))
+                for i in range(self.N):
+                    chi_r_inv_times_a_r += np.c_[Phi[i,:]]*Y[i]
+
+                a_r = chi_r@chi_r_inv_times_a_r
+
+                #########################################
+                #### Update B_r, D_r, E_Theta, ell_r ####
+                #########################################
+
+                #### B_r
+                B_r = self.B_0 + 1/2*(np.sum(Y**2) - a_r.transpose()@chi_r_inv@a_r)
+
+                #### D_r
+                D_r = np.zeros((n,1))
+                for i in range(n):
+                    D_r[i] = self.D_0 + 1/2*(a_r[i]**2*A_r/B_r + chi_r[i,i])         
+
+                #### E_Theta
+                for i in range(n):
+                    E_Theta[i,i] = float(C_r/D_r[i])
+
+                #### L_r
+                s_2 = 0
+                for i in range(self.N):
+                    s_2 += A_r/B_r*(Y[i] - np.c_[Phi[i,:]].transpose()@a_r)**2 \
+                    + np.c_[Phi[i,:]].transpose()@chi_r@np.c_[Phi[i,:]]
+
+                det_chi_r = np.linalg.det(chi_r)  # determinant of Xr
+                if det_chi_r == 0.0:
+                    det_chi_r = np.finfo(np.float64).tiny  
+
+                L_r = -self.N/2*math.log(2*math.pi) \
+                    - 1/2*s_2 \
+                    + math.log(gamma(A_r)) \
+                    + A_r*(1 - math.log(B_r) - self.B_0/B_r) \
+                    - math.log(gamma(self.A_0)) \
+                    + self.A_0*math.log(self.B_0) \
+                    - np.sum(C_r*np.log(D_r)) \
+                    + n*(1/2 - math.log(gamma(self.C_0)) + self.C_0*math.log(self.D_0) + math.log(gamma(C_r))) \
+                    + 1/2*math.log(det_chi_r)
 
 
-class AFVB_PCE(object):
-    
-    _N = None
-    
-    _d = None
-    
-    _p = None
-    
-    _params = None
-    
-    _n = None
-    
-    
-    def __init__(self, params, p, data, basis):
-        """
-        Initializes the object
-        """
-        self._params = params
-        
-        self._p = p
-        
-        self._data = data
-        
-        self._basis = basis
-        
-        self._N = self._data['Xi'].shape[0]
-        
-        self._d = self._data['Xi'].shape[1]
-        
-        self._n = int(math.factorial(self._d + self._p)/(math.factorial(self._d)*math.factorial(self._p)))
-        
-        self._Phi = self._basis(self._data['Xi'])
-        
-    def algorithm(self, T_ell, e):
-        
-        N = self._N
-        
-        for k in range(2): # Running loop twice, second time will store optimal values
-            if k == 1:
-                max_beta = np.argmax(ell_beta) + 1
-            else:
-                max_beta = 0
+                ##############################
+                ####    Compute e_ell     ####
+                ##############################
+                if L_old is None:
+                    L_old = L_r
+                else:
+                    e_L = np.abs(100*(float(L_r) - L_old)/L_old)
+                    L_old = float(L_r)
+
+                r += 1   
+
+            #### Save L_r value in an array
+            L_beta.append(float(L_r))
             
-            ########################################
-            #### Compute initial E_theta[Theta] ####
-            ########################################
-            E_Theta = np.zeros((self._n, self._n))
-            
-            for i in range(self._n):
-                E_Theta[i,i] = self._params['C_0']/self._params['D_0']
+            #print(Beta, Phi.shape, float(L_r))
+            ########################################################################################
+            ############################### Save the optimal vectors ###############################
+            ########################################################################################
+            if Beta == 1:
+                Phi_full = Phi_in
+                a_full = a_r
 
-            #### Compute A_r and C_r
-            A_r = self._params['A_0'] + self._N/2
-            C_r = self._params['C_0'] + 1/2
+            #if k == 1:    
+            #    print('Beta = ',Beta, '', 'n = ', Phi.shape[1], 'VLB = ', float(L_r))
+            ########################################################################################
+            ########################################################################################
 
-            #### List that keeps track of L_beta values and corresponding Beta value
-            ell_beta = []
+            #### Compute lambda_beta ####
+            lambda_beta = np.diag(np.linalg.inv(E_Theta))
 
-            ### An array made in order to keep track of which column numbers
-            ### Phi_hat kept in the end
-            col = np.array(range(0,self._Phi.shape[1]))
+            #### Compute ln_T_beta ####
+            ln_T_beta = min(np.log(lambda_beta)) + (max(np.log(lambda_beta)) - min(np.log(lambda_beta)))/self.eps
 
-            Beta = 1
-            ell_old = None
-            
-            Phi = self._Phi
-            while Phi.shape[1] > 1: ## Beta 
-                n = Phi.shape[1]
+            ########################################################################################
+            ############################# Update columns we are keeping ############################
+            ########################################################################################
+            col = col[np.log(lambda_beta) >= ln_T_beta]
+            col_full.append(col)
+         
+            ########################################################################################
+            ########################################################################################
 
-                e_ell = sys.float_info.max
-                r = 1
+            #### Prune Phi and E_Theta
+            Phi = Phi[:,np.log(lambda_beta) >= ln_T_beta]
+            E_Theta = E_Theta[:, np.log(lambda_beta) >= ln_T_beta]
+            E_Theta = E_Theta[np.log(lambda_beta) >= ln_T_beta,:]
 
-                while e_ell > T_ell: ## r
-                    ###############################
-                    #### Compute chi_r and a_r ####
-                    ###############################
-
-                    #### chi_r
-                    chi_r_inv = np.zeros((n, n))
-
-                    for i in range(N):
-                        chi_r_inv += np.c_[Phi[i,:]]@np.c_[Phi[i,:]].transpose()
-
-                    chi_r_inv += E_Theta
-                    chi_r = np.linalg.inv(chi_r_inv)
-
-
-                    #### a_r
-                    chi_r_inv_times_a_r = np.zeros((n, 1))
-                    for i in range(N):
-                        chi_r_inv_times_a_r += np.c_[Phi[i,:]]*self._data['Y'][i]
-
-                    a_r = chi_r@chi_r_inv_times_a_r
-
-                    #########################################
-                    #### Update B_r, D_r, E_Theta, ell_r ####
-                    #########################################
-
-                    #### B_r
-                    B_r = self._params['B_0'] + 1/2*(np.sum(self._data['Y']**2) - a_r.transpose()@chi_r_inv@a_r)
-
-                    #### D_r
-                    D_r = np.zeros((n,1))
-                    for i in range(n):
-                        D_r[i] = self._params['D_0'] + 1/2*(a_r[i]**2*A_r/B_r + chi_r[i,i])         
-
-                    #### E_Theta
-                    for i in range(n):
-                        E_Theta[i,i] = float(C_r/D_r[i])
-
-                    #### ell_r
-                    s_2 = 0
-                    for i in range(N):
-                        s_2 += A_r/B_r*(self._data['Y'][i] - np.c_[Phi[i,:]].transpose()@a_r)**2 \
-                        + np.c_[Phi[i,:]].transpose()@chi_r@np.c_[Phi[i,:]]
-
-                    det_chi_r = np.linalg.det(chi_r)  # determinant of Xr
-                    if det_chi_r == 0.0:
-                        det_chi_r = np.finfo(np.float64).tiny  
-                           
-                    ell_r = -N/2*math.log(2*math.pi) \
-                        - 1/2*s_2 \
-                        + math.log(gamma(A_r)) \
-                        + A_r*(1 - math.log(B_r) - self._params['B_0']/B_r) \
-                        - math.log(gamma(self._params['A_0'])) \
-                        + self._params['A_0']*math.log(self._params['B_0']) \
-                        - np.sum(C_r*np.log(D_r)) \
-                        + n*(1/2 - math.log(gamma(self._params['C_0'])) + self._params['C_0']*math.log(self._params['D_0']) + math.log(gamma(C_r))) \
-                        + 1/2*math.log(det_chi_r)
-
-                    
-                    ##############################
-                    ####    Compute e_ell     ####
-                    ##############################
-                    if ell_old is None:
-                        ell_old = ell_r
-                    else:
-                        e_ell = np.abs(100*(float(ell_r) - ell_old)/ell_old)
-                        ell_old = float(ell_r)
-                        
-                    r += 1   
-
-                #### Save ell_r value in an array
-                ell_beta.append(float(ell_r))
-
-                ########################################################################################
-                ############################### Save the optimal vectors ###############################
-                ########################################################################################
-                if Beta == 1:
-                    Phi_full = self._Phi
-                    a_full = a_r
-                if Beta == max_beta:
-                    Phi_hat = Phi
-                    a_hat = a_r
-                if k == 1:    
-                    print(Beta, Phi.shape, float(ell_r))
-                ########################################################################################
-                ########################################################################################
-
-                #### Compute lambda_beta ####
-                lambda_beta = np.diag(np.linalg.inv(E_Theta))
-
-                #### Compute ln_T_beta ####
-                ln_T_beta = min(np.log(lambda_beta)) + (max(np.log(lambda_beta)) - min(np.log(lambda_beta)))/e
-
-                ########################################################################################
-                ############################# Update columns we are keeping ############################
-                ########################################################################################
-                if Beta < max_beta:
-                    col = col[np.log(lambda_beta) >= ln_T_beta]
-                ########################################################################################
-                ########################################################################################
-
-                #### Prune Phi and E_Theta
-                Phi = Phi[:,np.log(lambda_beta) >= ln_T_beta]
-                E_Theta = E_Theta[:, np.log(lambda_beta) >= ln_T_beta]
-                E_Theta = E_Theta[np.log(lambda_beta) >= ln_T_beta,:]
-
-                Beta += 1
-
-        return Phi_hat, a_hat, Phi_full, a_full, col
+            Beta += 1
+        
+        max_beta = np.argmax(L_beta) + 1
+        
+        self.active_cols = col_full[max_beta-1]    
+        self.Phi_hat = Phi_full[:, self.active_cols]
+        self.a_hat = a_full[self.active_cols]
+        self.Phi_full = Phi_full
+        self.a_full = a_full
+        
+        print('Beta_star = ', max_beta,'', 'n_star = ', self.active_cols.shape[0])
+                
+        return self
     
-
-
-# In[28]:
-
-
-#### Need class that computes S_1, ... 
-
-
-# In[ ]:
-
-
+    def predict(self, X):
+        return self.basis(X, self.p)[:,self.active_cols]@self.a_hat
 
 
