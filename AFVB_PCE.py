@@ -121,8 +121,8 @@ class AFVB_PCE(BaseEstimator):
 
                 det_chi_r = np.linalg.det(chi_r)  # determinant of Xr
                 if det_chi_r == 0.0:
-                    det_chi_r = np.finfo(np.float64).tiny  
-
+                    det_chi_r = np.finfo(np.float64).tiny 
+                
                 L_r = -self.N/2*math.log(2*math.pi) \
                     - 1/2*s_2 \
                     + math.log(gamma(A_r)) \
@@ -132,7 +132,7 @@ class AFVB_PCE(BaseEstimator):
                     - np.sum(C_r*np.log(D_r)) \
                     + n*(1/2 - math.log(gamma(self.C_0)) + self.C_0*math.log(self.D_0) + math.log(gamma(C_r))) \
                     + 1/2*math.log(det_chi_r)
-
+                
 
                 ##############################
                 ####    Compute e_ell     ####
