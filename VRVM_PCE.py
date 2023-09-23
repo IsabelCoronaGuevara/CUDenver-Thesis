@@ -401,8 +401,11 @@ class SparseVariationalOptimizer(BaseEstimator):
 
 		#elif method == 'stoch_ascent':
 
-	def predict(self, X):
-		return self.basis(X, self.p)[:,self.active_cols]@self.c_sol[self.active_cols,0]
+	def predict(self, X, active_cols = None):
+		if active_cols is None:
+			return self.basis(X, self.p)@self.c_sol[:,0]
+		else:
+			return self.basis(X, self.p)[:,self.active_cols]@self.c_sol[self.active_cols,0]
 # In[ ]:
 
 
