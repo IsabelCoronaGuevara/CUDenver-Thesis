@@ -195,7 +195,10 @@ class AFVB_PCE(BaseEstimator):
                 
         return self
     
-    def predict(self, X):
-        return self.basis(X, self.p)[:,self.active_cols]@self.a_hat
+    def predict(self, X, active_cols = None):
+        if active_cols is None:
+            return self.basis(X, self.p)@self.a_full
+        else:
+            return self.basis(X, self.p)[:,self.active_cols]@self.a_hat
 
 
