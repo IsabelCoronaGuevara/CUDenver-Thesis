@@ -9,6 +9,7 @@ __version__ = '0.1'
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import math
+import scipy.integrate as integrate
 from itertools import product
 
 class aPCE(object):
@@ -51,15 +52,52 @@ class aPCE(object):
             val += coeff[i]*x**i
 
         return val
-
-    def Inner_prod(self, coeff, dat):
+    
+    def Inner_prod_3D(self, coeff1, coeff2, coeff3, dat):
         """
         Approximates the integral of the product of 2 polynomials.
         """
         
-        s = np.mean(self.Pol_eval(coeff, dat)*self.Pol_eval(coeff, dat))
+        s = np.mean(self.Pol_eval(coeff1, dat[:,0])*self.Pol_eval(coeff2, dat[:,1])*self.Pol_eval(coeff3, dat[:,2])\
+                   *self.Pol_eval(coeff1, dat[:,0])*self.Pol_eval(coeff2, dat[:,1])*self.Pol_eval(coeff3, dat[:,2]))
         
         return s
+
+    def Inner_prod(self, coeff1, coeff2, dat):
+        """
+        Approximates the integral of the product of 2 polynomials.
+        """
+        
+        s = np.mean(self.Pol_eval(coeff1, dat)*self.Pol_eval(coeff2, dat))
+        
+        return s
+    
+    def coeff_index(self, d, max_deg):
+        """
+        Generate all the d-dimensional polynomial indices with the 
+        constraint that the sum of the indexes is <= max_deg
+
+        input:
+        d: int, number of random variables
+        max_deg: int, the max degree allowed
+
+        return: 
+        2d array with shape[1] equal to d, the multivariate indices
+        """
+        maxRange = max_deg*np.ones(d, dtype = 'int')
+        index = np.array([i for i in product(*(range(i + 1) for i in maxRange)) if sum(i) <= 2*max_deg])
+
+        return index    
+
+    def Norm(self, P, dat, pol_d):
+        """
+        Approximates the norm of a polynomial.
+        """
+        c_idx = self.coeff_index(2, pol_d)
+        val = 0
+        for i in range(c_idx.shape[0]):
+            val += P[pol_d][c_idx[i][0]]*P[pol_d][c_idx[i][1]]*np.mean(dat**(np.sum(c_idx[i])))
+        return np.sqrt(val)
     
     def Create_Orthonormal_Polynomials(self, p):
         """
@@ -93,10 +131,11 @@ class aPCE(object):
             # Normalizing Polynomials
             P_temp_norm = np.zeros((p+1, p+1))
             for i in range(p+1):
-                P_temp_norm[i,:] = P_temp[i,:]/np.sqrt(self.Inner_prod(P_temp[i,:], self.X[:,j]))
+                #P_temp_norm[i,:] = P_temp[i,:]/self.Norm(P_temp, self.X[:,j], i)
+                P_temp_norm[i,:] = P_temp[i,:]/(np.sqrt(self.Inner_prod(P_temp[i,:],P_temp[i,:],self.X[:,j])))
 
             # Adding Matrix with Polynomial Coefficients to P
             P.append(P_temp_norm)
-
+            
         return P
     

@@ -251,7 +251,7 @@ class SparseVariationalOptimizer(BaseEstimator):
 
 
 	def fit(self, X, Y):
-		tol = 1e-3
+		tol = 1e-4
 		method = 'ascent'
 		self.d = X.shape[1]
 		self.K = X.shape[0]
@@ -385,7 +385,7 @@ class SparseVariationalOptimizer(BaseEstimator):
 			ZETA_err = np.sum(z_sol)
 
 			#print omega_sol
-			print('Total number of iterations : ' + str(iters))            
+			#print('Total number of iterations : ' + str(iters))            
 			self.c_sol = c_sol
 			self.omega_sol = omega_sol
 			self.tau_sol = tau_sol
@@ -395,17 +395,19 @@ class SparseVariationalOptimizer(BaseEstimator):
 			self.elbo = elbo
             
 			self.active_cols = np.array(range(0,self.n))[self.z_sol>0.01]
-			print('n_star = ', self.active_cols.shape[0])
+			self.a_hat = self.c_sol[self.active_cols,0]
+			self.n_star = self.active_cols.shape[0]
+			#print('n_star = ', self.n_star)
             
 			return self
 
 		#elif method == 'stoch_ascent':
 
-	def predict(self, X, active_cols = None):
-		if active_cols is None:
-			return self.basis(X, self.p)@self.c_sol[:,0]
-		else:
+	def predict(self, X, sparse = True):
+		if sparse is True:
 			return self.basis(X, self.p)[:,self.active_cols]@self.c_sol[self.active_cols,0]
+		else:
+			return self.basis(X, self.p)@self.c_sol[:,0]
 # In[ ]:
 
 

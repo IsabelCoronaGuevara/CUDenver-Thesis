@@ -64,6 +64,9 @@ class AFVB_PCE(BaseEstimator):
         col_full = []
         col = np.array(range(0,Phi_in.shape[1]))
         col_full.append(col)
+        a_all = []
+        chi_all = []
+        Br_all = []
         
         Beta = 1
         L_old = None
@@ -155,6 +158,9 @@ class AFVB_PCE(BaseEstimator):
             if Beta == 1:
                 Phi_full = Phi_in
                 a_full = a_r
+                a_all.append(a_full)
+                chi_all.append(chi_r)
+                Br_all.append(B_r)
 
             #if k == 1:    
             #    print('Beta = ',Beta, '', 'n = ', Phi.shape[1], 'VLB = ', float(L_r))
@@ -172,6 +178,10 @@ class AFVB_PCE(BaseEstimator):
             ########################################################################################
             col = col[np.log(lambda_beta) >= ln_T_beta]
             col_full.append(col)
+            
+            a_all.append(a_r)
+            chi_all.append(chi_r)
+            Br_all.append(B_r)
          
             ########################################################################################
             ########################################################################################
@@ -187,18 +197,21 @@ class AFVB_PCE(BaseEstimator):
         
         self.active_cols = col_full[max_beta-1]    
         self.Phi_hat = Phi_full[:, self.active_cols]
-        self.a_hat = a_full[self.active_cols]
+        self.a_hat = a_all[max_beta]
         self.Phi_full = Phi_full
         self.a_full = a_full
+        self.n_star = self.active_cols.shape[0]
+        self.chi = chi_all[max_beta]
+        self.Br = Br_all[max_beta]
         
-        print('Beta_star = ', max_beta,'', 'n_star = ', self.active_cols.shape[0])
+        #print('Beta_star = ', max_beta,'', 'n_star = ', self.n_star)
                 
         return self
     
-    def predict(self, X, active_cols = None):
-        if active_cols is None:
-            return self.basis(X, self.p)@self.a_full
-        else:
+    def predict(self, X, sparse = True):
+        if sparse is True:
             return self.basis(X, self.p)[:,self.active_cols]@self.a_hat
+        else:
+            return self.basis(X, self.p)@self.a_full
 
 
