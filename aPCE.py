@@ -139,3 +139,40 @@ class aPCE(object):
             
         return P
     
+    def P_ip1(self, P_i, P_im1, alpha, beta):
+        return np.roll(P_i,1) - alpha*P_i - beta*P_im1
+
+    def alpha(self, P_i, X):
+        return np.mean(X*self.Pol_eval(P_i, X)*self.Pol_eval(P_i, X))/np.mean(self.Pol_eval(P_i, X)*self.Pol_eval(P_i, X))
+
+    def beta(self, P_i, P_im1, X):
+        return np.mean(self.Pol_eval(P_i, X)*self.Pol_eval(P_i, X))/np.mean(self.Pol_eval(P_im1, X)*self.Pol_eval(P_im1, X))
+
+    
+    def Create_Orthonormal_Polynomials_Stieltjes(self, p):
+
+        P = []
+        for j in range(self.d):
+            P_temp = np.zeros((self.p+1, self.p+1)) 
+            P_temp[0,0] = 1
+            P_m1 = np.zeros(self.p+1)
+            P_temp[1,:] = self.P_ip1(P_temp[0,:], P_m1, self.alpha(P_temp[0,:], self.X[:,j]), 1)
+
+            for i in range(2,self.p+1):
+                P_temp[i,:] = self.P_ip1(P_temp[i-1,:], P_temp[i-2,:], self.alpha(P_temp[i-1,:], self.X[:,j]), self.beta(P_temp[i-1,:], P_temp[i-2,:], self.X[:,j]))
+
+            P_temp_norm = np.zeros((self.p+1, self.p+1))
+            for i in range(self.p+1):
+                #P_temp_norm[i,:] = P_temp[i,:]/self.Norm(P_temp, self.X[:,j], i)
+                P_temp_norm[i,:] = P_temp[i,:]/(np.sqrt(self.Inner_prod(P_temp[i,:],P_temp[i,:],self.X[:,j])))
+
+            # Adding Matrix with Polynomial Coefficients to P
+            P.append(P_temp_norm)
+            
+        return P
+        
+        
+        
+        
+        
+    
