@@ -64,9 +64,9 @@ class ChaosModel(object):
     ### Need to save coefficients first
     def eval(self, xi, active_indices = None):
         if active_indices is None:
-            return np.dot(self._basis(xi, self._order), self._coeffs)
+            return np.dot(self._basis(xi, self._order, self.PCE_method, self.aPCE_model, self.P), self._coeffs)
         else:
-            return np.dot(self._basis(xi, self._order)[:, active_indices], self._coeffs[active_indices])
+            return np.dot(self._basis(xi, self._order, self.PCE_method, self.aPCE_model, self.P)[:, active_indices], self._coeffs[active_indices])
     
 
 
@@ -158,12 +158,15 @@ class SparseVariationalOptimizer(BaseEstimator):
 	# L component
 	_expL = None
 
-	def __init__(self, basis, p = 8, omega_a = 10**(-6), omega_b = 10**(-6), tau_a = 10**(-6), tau_b = 10**(-6), pi_a = 0.2, pi_b = 1.0):
+	def __init__(self, basis, PCE_method, aPCE_model, P, p = 8, omega_a = 10**(-6), omega_b = 10**(-6), tau_a = 10**(-6), tau_b = 10**(-6), pi_a = 0.2, pi_b = 1.0):
 		"""
 		Initializes the object
 		"""
 		self.p = p   
 		self.basis = basis
+		self.PCE_method = PCE_method
+		self.aPCE_model = aPCE_model
+		self.P = P
 		self.omega_a = omega_a
 		self.omega_b = omega_b
 		self.tau_a = tau_a
@@ -209,7 +212,7 @@ class SparseVariationalOptimizer(BaseEstimator):
 		return exp_F.map_to_eta(self._prior_params['pi'])
 
 	def update_Psi(self): # Won't be used (most likely). Delete it later. 
-		self._Psi = self._chaos_model._basis(self.X, self.p)
+		self._Psi = self._chaos_model._basis(self.X, self.p, self.PCE_method, self.aPCE_model, self.P)
 
 	def update_L(self):
 		xi = self.X
@@ -217,7 +220,7 @@ class SparseVariationalOptimizer(BaseEstimator):
 
 	def expL(self, m, rho, pi):
 		eta = self.X
-		Psi = self._chaos_model._basis(eta, self.p)
+		Psi = self._chaos_model._basis(eta, self.p, self.PCE_method, self.aPCE_model, self.P)
 		self._expL = np.array([self.K / 2., - np.linalg.norm(self.Y - np.dot(Psi, pi*m) ) ** 2 / 2. - 0.5 * np.trace( np.dot(self._PsiPsi, np.diag( pi*(1./rho) + (pi-pi**2)*m**2) )  )  ])
 
 	def compELBO(self, eta_c, eta_om, eta_tau, eta_z, eta_pi):
@@ -264,7 +267,7 @@ class SparseVariationalOptimizer(BaseEstimator):
 		expF_beta = ExponFam('Beta')
 		expF_bernoulli = ExponFam('Bernoulli')
         
-		self._Psi = self._chaos_model._basis(self.X, self.p)
+		self._Psi = self._chaos_model._basis(self.X, self.p, self.PCE_method, self.aPCE_model, self.P)
 		self.n = self._Psi.shape[1]
 		self._PsiPsi = np.dot(self._Psi.T, self._Psi)
 		self._yPsi = (self.Y * self._Psi.T).T
@@ -397,6 +400,7 @@ class SparseVariationalOptimizer(BaseEstimator):
 			self.active_cols = np.array(range(0,self.n))[self.z_sol>0.01]
 			self.a_hat = self.c_sol[self.active_cols,0]
 			self.n_star = self.active_cols.shape[0]
+			self.a_full = self.c_sol[:,0]
 			#print('n_star = ', self.n_star)
             
 			return self
@@ -405,9 +409,12 @@ class SparseVariationalOptimizer(BaseEstimator):
 
 	def predict(self, X, sparse = True):
 		if sparse is True:
-			return self.basis(X, self.p)[:,self.active_cols]@self.c_sol[self.active_cols,0]
+			if self.n_star != 0:
+				return self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P)[:,self.active_cols]@self.c_sol[self.active_cols,0]
+			else:
+				return self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P)@self.c_sol[:,0]
 		else:
-			return self.basis(X, self.p)@self.c_sol[:,0]
+			return self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P)@self.c_sol[:,0]
 # In[ ]:
 
 
