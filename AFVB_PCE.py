@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 """
 Author: 
 Date: 
@@ -22,7 +16,7 @@ from sklearn.metrics import mean_squared_error
 class AFVB_PCE(BaseEstimator):
     
     
-    def __init__(self, basis, p = 8, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000):
+    def __init__(self, basis, domain, PCE_method, aPCE_model = None, P = None, p = 8, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000):
         """
         Initializes the object
         """
@@ -36,10 +30,14 @@ class AFVB_PCE(BaseEstimator):
         self.T_L = T_L
         self.eps = eps
         self.basis = basis
+        self.aPCE_model = aPCE_model
+        self.PCE_method = PCE_method
+        self.P = P
+        self.domain = domain
         
     def fit(self, X, Y):
         
-        Phi_in = self.basis(X, self.p)
+        Phi_in = self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P, self.domain)
         self.N = Phi_in.shape[0]
         self.n = Phi_in.shape[1]
      
@@ -203,6 +201,7 @@ class AFVB_PCE(BaseEstimator):
         self.n_star = self.active_cols.shape[0]
         self.chi = chi_all[max_beta]
         self.Br = Br_all[max_beta]
+        self.chi_full = chi_all[0]
         
         #print('Beta_star = ', max_beta,'', 'n_star = ', self.n_star)
                 
@@ -210,8 +209,8 @@ class AFVB_PCE(BaseEstimator):
     
     def predict(self, X, sparse = True):
         if sparse is True:
-            return self.basis(X, self.p)[:,self.active_cols]@self.a_hat
-        else:
-            return self.basis(X, self.p)@self.a_full
+            return self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P, self.domain)[:,self.active_cols]@self.a_hat
+        elif sparse is False:
+            return self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P, self.domain)@self.a_full
 
 
