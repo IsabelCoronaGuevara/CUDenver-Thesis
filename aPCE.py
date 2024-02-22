@@ -18,7 +18,7 @@ class aPCE(object):
     
     """
     
-    def __init__(self, X, p, idx):
+    def __init__(self, X, p):
         """
         Implement the initializer of aPCE class.
 
@@ -35,10 +35,28 @@ class aPCE(object):
         
         self.X = X
         self.p = p
-        self.idx = idx
         self.N = self.X.shape[0] # sample size
         self.d = self.X.shape[1] # number of parameters
         self.n = int(math.factorial(self.d + self.p)/(math.factorial(self.d)*math.factorial(self.p)))
+    
+    
+    def multivariate_pce_index(self, d, max_deg):
+        """
+        Generate all the d-dimensional polynomial indices with the 
+        constraint that the sum of the indexes is <= max_deg
+
+        input:
+        d: int, number of random variables
+        max_deg: int, the max degree allowed
+
+        return: 
+        2d array with shape[1] equal to d, the multivariate indices
+        """
+        maxRange = max_deg*np.ones(d, dtype = 'int')
+        index = np.array([i for i in product(*(range(i + 1) for i in maxRange)) if sum(i) <= max_deg])
+
+        return index    
+    
     
     def Pol_eval(self, coeff, x):
         """
@@ -93,6 +111,9 @@ class aPCE(object):
         """
         Approximates the norm of a polynomial.
         """
+        
+        
+        
         c_idx = self.coeff_index(2, pol_d)
         val = 0
         for i in range(c_idx.shape[0]):
