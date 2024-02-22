@@ -3,25 +3,25 @@ Author:
 Date: 
 """
 
-__all__ = ['AFVB_PCE']
-
 import numpy as np
 import math
 from itertools import product
 from scipy.special import gamma
 import sys
 from sklearn.base import BaseEstimator
-from sklearn.metrics import mean_squared_error
+from scipy.special import legendre
+from aPCE import *
 
 class AFVB_PCE(BaseEstimator):
     
     
-    def __init__(self, basis, domain, PCE_method, aPCE_model = None, P = None, p = 8, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000):
+    def __init__(self, PCE_method, d, p = 8, domain = None, aPCE_model = None, P = None, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000):
         """
         Initializes the object
         """
         
         self.p = p
+        self.d = d
         self.A_0 = A_0
         self.B_0 = B_0
         self.C_0 = C_0
@@ -29,15 +29,62 @@ class AFVB_PCE(BaseEstimator):
         
         self.T_L = T_L
         self.eps = eps
-        self.basis = basis
         self.aPCE_model = aPCE_model
         self.PCE_method = PCE_method
         self.P = P
         self.domain = domain
         
+    def multivariate_pce_index(self, d, max_deg):
+        """
+        Generate all the d-dimensional polynomial indices with the 
+        constraint that the sum of the indexes is <= max_deg
+
+        input:
+        d: int, number of random variables
+        max_deg: int, the max degree allowed
+
+        return: 
+        2d array with shape[1] equal to d, the multivariate indices
+        """
+        maxRange = max_deg*np.ones(d, dtype = 'int')
+        index = np.array([i for i in product(*(range(i + 1) for i in maxRange)) if sum(i) <= max_deg])
+
+        return index
+    
+    def basis(self, Z):
+        """
+        PCE_method: aPCE or PCE_Legendre
+        aPCE_model: mod or None
+        P: P or P_Steiltjs or None
+        domain: Looks like np.array([[a,b], [a,b], [a,b], ...])
+        """
+        
+
+        N = Z.shape[0]
+        n = int(math.factorial(self.d + self.p)/(math.factorial(self.d)*math.factorial(self.p)))
+
+        Phi = np.ones((N, n))
+        idx = self.multivariate_pce_index(self.d, self.p)
+
+        if (self.PCE_method == 'aPCE'):
+            for i in range(n):
+                for j in range(self.d):
+                    Phi[:,i] *=  self.aPCE_model.Pol_eval(self.P[j][idx[i][j]], Z[:,j])
+
+        elif (self.PCE_method == 'PCE_Legendre'):
+            a = self.domain[:,0]
+            b = self.domain[:,1]
+            for i in range(n):
+                for j in range(self.d):
+                    Phi[:,i] *=  math.sqrt((2*idx[i][j]+1)/1)*legendre(idx[i][j])((a[j]+b[j]-2*Z[:,j])/(a[j]-b[j]))
+        else: 
+            print('Proper PCE_method not given')
+
+        return Phi
+        
     def fit(self, X, Y):
         
-        Phi_in = self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P, self.domain)
+        Phi_in = self.basis(X)
         self.N = Phi_in.shape[0]
         self.n = Phi_in.shape[1]
      
@@ -209,8 +256,8 @@ class AFVB_PCE(BaseEstimator):
     
     def predict(self, X, sparse = True):
         if sparse is True:
-            return self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P, self.domain)[:,self.active_cols]@self.a_hat
+            return self.basis(X)[:,self.active_cols]@self.a_hat
         elif sparse is False:
-            return self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P, self.domain)@self.a_full
+            return self.basis(X)@self.a_full
 
 
