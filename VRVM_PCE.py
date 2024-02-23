@@ -12,14 +12,15 @@ Contains classes for Chaos expansions, Exponential families (containing Beta, Be
 Optimizer for the standard RVM and sparse RVM.
 """
 
-__all__ = ['ChaosModel', 'ExponFam', 'SparseVariationalOptimizer']
+__all__ = ['ChaosModel', 'ExponFam', 'VRVM_PCE']
 
 import numpy as np
 import math 
 import scipy.stats as st 
 import scipy.special as sp
 from sklearn.base import BaseEstimator
-from Basis import *
+from itertools import product
+import sys
 
 
 # In[13]:
@@ -64,9 +65,9 @@ class ChaosModel(object):
     ### Need to save coefficients first
     def eval(self, xi, active_indices = None):
         if active_indices is None:
-            return np.dot(self._basis(xi, self._order, self.PCE_method, self.aPCE_model, self.P), self._coeffs)
+            return np.dot(self._basis(xi), self._coeffs)
         else:
-            return np.dot(self._basis(xi, self._order, self.PCE_method, self.aPCE_model, self.P)[:, active_indices], self._coeffs[active_indices])
+            return np.dot(self._basis(xi)[:, active_indices], self._coeffs[active_indices])
     
 
 
@@ -138,7 +139,7 @@ class ExponFam(object):
 			return np.array([params[0], params[1]])
 
 
-class SparseVariationalOptimizer(BaseEstimator):
+class VRVM_PCE(BaseEstimator):
 
 	_chaos_model = None
 
@@ -158,12 +159,13 @@ class SparseVariationalOptimizer(BaseEstimator):
 	# L component
 	_expL = None
 
-	def __init__(self, basis, PCE_method, aPCE_model, P, p = 8, omega_a = 10**(-6), omega_b = 10**(-6), tau_a = 10**(-6), tau_b = 10**(-6), pi_a = 0.2, pi_b = 1.0):
+	def __init__(self, PCE_method, d, p = 8, domain = None, aPCE_model = None, P = None, omega_a = 10**(-6), omega_b = 10**(-6), tau_a = 10**(-6), tau_b = 10**(-6), pi_a = 0.2, pi_b = 1.0):
 		"""
 		Initializes the object
 		"""
 		self.p = p   
-		self.basis = basis
+		self.d = d
+		self.domain = domain
 		self.PCE_method = PCE_method
 		self.aPCE_model = aPCE_model
 		self.P = P
@@ -174,6 +176,54 @@ class SparseVariationalOptimizer(BaseEstimator):
 		self.pi_a = pi_a
 		self.pi_b = pi_b
 		self._prior_params = {'omega' : [self.omega_a, self.omega_b], 'tau': [self.tau_a, self.tau_b], 'pi': [self.pi_a, self.pi_b]}
+        
+	def multivariate_pce_index(self, d, max_deg):
+		"""
+		Generate all the d-dimensional polynomial indices with the 
+		constraint that the sum of the indexes is <= max_deg
+		
+		input:
+		d: int, number of random variables
+		max_deg: int, the max degree allowed
+		
+		return: 
+		2d array with shape[1] equal to d, the multivariate indices
+		"""
+		maxRange = max_deg*np.ones(d, dtype = 'int')
+		index = np.array([i for i in product(*(range(i + 1) for i in maxRange)) if sum(i) <= max_deg])
+		
+		return index
+    
+	def basis(self, Z):
+		"""
+		PCE_method: aPCE or PCE_Legendre
+		aPCE_model: mod or None
+		P: P or P_Steiltjs or None
+		domain: Looks like np.array([[a,b], [a,b], [a,b], ...])
+		"""
+		        
+		
+		N = Z.shape[0]
+		n = int(math.factorial(self.d + self.p)/(math.factorial(self.d)*math.factorial(self.p)))
+		
+		Phi = np.ones((N, n))
+		idx = self.multivariate_pce_index(self.d, self.p)
+		
+		if (self.PCE_method == 'aPCE'):
+			for i in range(n):
+				for j in range(self.d):
+					Phi[:,i] *=  self.aPCE_model.Pol_eval(self.P[j][idx[i][j]], Z[:,j])
+		
+		elif (self.PCE_method == 'PCE_Legendre'):
+			a = np.array(self.domain)[:,0]
+			b = np.array(self.domain)[:,1]
+			for i in range(n):
+				for j in range(self.d):
+					Phi[:,i] *=  math.sqrt((2*idx[i][j]+1)/1)*legendre(idx[i][j])((a[j]+b[j]-2*Z[:,j])/(a[j]-b[j]))
+		else: 
+			print('Proper PCE_method not given')
+		
+		return Phi
 
 #### For the following z_c_... definitions we can look at Eq. 28 - 32        
 
@@ -212,7 +262,7 @@ class SparseVariationalOptimizer(BaseEstimator):
 		return exp_F.map_to_eta(self._prior_params['pi'])
 
 	def update_Psi(self): # Won't be used (most likely). Delete it later. 
-		self._Psi = self._chaos_model._basis(self.X, self.p, self.PCE_method, self.aPCE_model, self.P)
+		self._Psi = self._chaos_model._basis(self.X)
 
 	def update_L(self):
 		xi = self.X
@@ -220,7 +270,7 @@ class SparseVariationalOptimizer(BaseEstimator):
 
 	def expL(self, m, rho, pi):
 		eta = self.X
-		Psi = self._chaos_model._basis(eta, self.p, self.PCE_method, self.aPCE_model, self.P)
+		Psi = self._chaos_model._basis(eta)
 		self._expL = np.array([self.K / 2., - np.linalg.norm(self.Y - np.dot(Psi, pi*m) ) ** 2 / 2. - 0.5 * np.trace( np.dot(self._PsiPsi, np.diag( pi*(1./rho) + (pi-pi**2)*m**2) )  )  ])
 
 	def compELBO(self, eta_c, eta_om, eta_tau, eta_z, eta_pi):
@@ -258,8 +308,14 @@ class SparseVariationalOptimizer(BaseEstimator):
 		method = 'ascent'
 		self.d = X.shape[1]
 		self.K = X.shape[0]
-		self.Y = Y
-		self.X = X
+		sys.path.append('..')
+
+		data={'xi': X}
+		data['y'] = Y.reshape(self.K)
+
+		self.X = data['xi']
+		self.Y = data['y']
+
 		self._chaos_model = ChaosModel(self.d, self.p, self.basis)
         
 		expF_gauss = ExponFam('Gauss')
@@ -267,7 +323,7 @@ class SparseVariationalOptimizer(BaseEstimator):
 		expF_beta = ExponFam('Beta')
 		expF_bernoulli = ExponFam('Bernoulli')
         
-		self._Psi = self._chaos_model._basis(self.X, self.p, self.PCE_method, self.aPCE_model, self.P)
+		self._Psi = self._chaos_model._basis(X)
 		self.n = self._Psi.shape[1]
 		self._PsiPsi = np.dot(self._Psi.T, self._Psi)
 		self._yPsi = (self.Y * self._Psi.T).T
@@ -410,11 +466,11 @@ class SparseVariationalOptimizer(BaseEstimator):
 	def predict(self, X, sparse = True):
 		if sparse is True:
 			if self.n_star != 0:
-				return self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P)[:,self.active_cols]@self.c_sol[self.active_cols,0]
+				return self.basis(X)[:,self.active_cols]@self.c_sol[self.active_cols,0]
 			else:
-				return self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P)@self.c_sol[:,0]
+				return self.basis(X)@self.c_sol[:,0]
 		else:
-			return self.basis(X, self.p, self.PCE_method, self.aPCE_model, self.P)@self.c_sol[:,0]
+			return self.basis(X)@self.c_sol[:,0]
 # In[ ]:
 
 
