@@ -33,6 +33,7 @@ class AFVB_PCE(BaseEstimator):
         self.PCE_method = PCE_method
         self.P = P
         self.domain = domain
+        self.Full_only = Full_only
         
     def multivariate_pce_index(self, d, max_deg):
         """
@@ -206,6 +207,7 @@ class AFVB_PCE(BaseEstimator):
                 a_all.append(a_full)
                 chi_all.append(chi_r)
                 Br_all.append(B_r)
+                
 
             #if k == 1:    
             #    print('Beta = ',Beta, '', 'n = ', Phi.shape[1], 'VLB = ', float(L_r))
