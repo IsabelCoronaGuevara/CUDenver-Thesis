@@ -33,7 +33,6 @@ class AFVB_PCE(BaseEstimator):
         self.PCE_method = PCE_method
         self.P = P
         self.domain = domain
-        self.Full_only = Full_only
         
     def multivariate_pce_index(self, d, max_deg):
         """
@@ -73,8 +72,8 @@ class AFVB_PCE(BaseEstimator):
                     Phi[:,i] *=  self.aPCE_model.Pol_eval(self.P[j][idx[i][j]], Z[:,j])
 
         elif (self.PCE_method == 'PCE_Legendre'):
-            a = self.domain[:,0]
-            b = self.domain[:,1]
+            a = np.array(self.domain)[:,0]
+            b = np.array(self.domain)[:,1]
             for i in range(n):
                 for j in range(self.d):
                     Phi[:,i] *=  math.sqrt((2*idx[i][j]+1)/1)*legendre(idx[i][j])((a[j]+b[j]-2*Z[:,j])/(a[j]-b[j]))
