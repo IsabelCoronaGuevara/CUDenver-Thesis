@@ -22,7 +22,7 @@ class ME_PCE(BaseEstimator):
     
     """
     
-    def __init__(self, X_pol, B_init, fun, idx, alg_mod, basis, PCE_method, p = 5, sparse = True, theta1 = 0.001, theta2 = 0.01, alpha = 1/2, size_restriction = 25, B_split = None, arg1 = 0.00001, arg2 = 0.00001, arg3 = 0.00001, arg4= 0.00001):
+    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, X_pol, sparse = False, theta1 = 0.001, theta2 = 0.01, alpha = 1/2, size_restriction = 25, B_split = None, arg1 = 0.01, arg2 = 0.0001, arg3 = 0.01, arg4= 0.0001):
         """
 
 
@@ -31,11 +31,10 @@ class ME_PCE(BaseEstimator):
         self.X_pol = X_pol
         self.B_init = B_init
         self.fun = fun
-        self.idx = idx
         self.alg_mod = alg_mod
-        self.basis = basis
         self.PCE_method = PCE_method
         self.p = p
+        self.d = d
         self.sparse = sparse
         self.theta1 = theta1
         self.theta2 = theta2
@@ -46,6 +45,24 @@ class ME_PCE(BaseEstimator):
         self.arg3 = arg3
         self.arg4 = arg4
         self.B_split = B_split
+        
+    def multivariate_pce_index(self, d, max_deg):
+        """
+        Generate all the d-dimensional polynomial indices with the 
+        constraint that the sum of the indexes is <= max_deg
+
+        input:
+        d: int, number of random variables
+        max_deg: int, the max degree allowed
+
+        return: 
+        2d array with shape[1] equal to d, the multivariate indices
+        """
+        maxRange = max_deg*np.ones(d, dtype = 'int')
+        index = np.array([i for i in product(*(range(i + 1) for i in maxRange)) if sum(i) <= max_deg])
+
+        return index
+    
     
     def split_data(self, X, B_k):
         """
@@ -65,7 +82,7 @@ class ME_PCE(BaseEstimator):
                 
         return np.c_[np.array(X_k)]
     
-    def split_domain(self, X_train, X_pol, theta1, theta2, alpha, size_restriction = 25):
+    def split_domain(self, X_train, X_pol, theta1, theta2, alpha, size_restriction = 25, iter_num = 10):
         """
         Inputs:
         
@@ -83,7 +100,7 @@ class ME_PCE(BaseEstimator):
         """
         B = self.B_init
         
-        for j in range(self.d):
+        for j in range(iter_num):
             B_k = []
             for k in range(len(B)):
 
@@ -91,10 +108,10 @@ class ME_PCE(BaseEstimator):
                 X_t = self.split_data(X_train, np.array(B[k]))
                 Y_t = self.fun(X_t)
 
-                mod = aPCE(X_p, self.p, self.idx)
+                mod = aPCE(X_p, self.p)
                 P = mod.Create_Orthonormal_Polynomials(self.p)  ######
 
-                model = self.alg_mod(self.basis, np.array(B[k]), self.PCE_method, mod, P, self.p, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
+                model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
                 
                 if self.sparse is True:
                     a_vec = np.zeros((self.n,1))
@@ -175,6 +192,10 @@ class ME_PCE(BaseEstimator):
                     #print(B_k)
                     B_k = B_k+[B_new]
                     #print(B_new)
+                    
+            # stop the iteration if no splitting is to occur next
+            if B == B_k:
+                break
 
             B = B_k.copy()
             
@@ -185,6 +206,7 @@ class ME_PCE(BaseEstimator):
         X: Training Data
         """
          
+        self.idx = self.multivariate_pce_index(self.d, self.p)
         self.N = X_train.shape[0] # sample size
         self.d = X_train.shape[1] # number of parameters
         self.n = int(math.factorial(self.d + self.p)/(math.factorial(self.d)*math.factorial(self.p)))
@@ -202,12 +224,12 @@ class ME_PCE(BaseEstimator):
                 #print(X_t.shape[0], 'k =', k)
                 Y_t = self.fun(X_t)
 
-                mod = aPCE(X_p, self.p, self.idx)
+                mod = aPCE(X_p, self.p)
                 mod_local.append(mod)
                 P = mod.Create_Orthonormal_Polynomials(self.p)
                 P_local.append(P)
 
-                model = self.alg_mod(self.basis, B[k], self.PCE_method, mod, P, self.p, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
+                model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
                 model_local.append(model)
 
             self.B_split = B
@@ -226,12 +248,12 @@ class ME_PCE(BaseEstimator):
                 #print(X_t.shape[0], 'k =', k)
                 Y_t = self.fun(X_t)
 
-                mod = aPCE(X_p, self.p, self.idx)
+                mod = aPCE(X_p, self.p)
                 mod_local.append(mod)
                 P = mod.Create_Orthonormal_Polynomials(self.p)
                 P_local.append(P)
 
-                model = self.alg_mod(self.basis, B[k], self.PCE_method, mod, P, self.p, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
+                model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
                 model_local.append(model)
 
             self.P_local = P_local
