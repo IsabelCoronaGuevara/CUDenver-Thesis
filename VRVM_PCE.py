@@ -21,6 +21,7 @@ import scipy.special as sp
 from sklearn.base import BaseEstimator
 from itertools import product
 import sys
+from scipy.special import legendre
 
 
 # In[13]:
