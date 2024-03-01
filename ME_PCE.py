@@ -22,7 +22,7 @@ class ME_PCE(BaseEstimator):
     
     """
     
-    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, X_pol, sparse = False, theta1 = 0.001, theta2 = 0.01, alpha = 1/2, size_restriction = 25, B_split = None, arg1 = 0.01, arg2 = 0.0001, arg3 = 0.01, arg4= 0.0001):
+    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, X_pol, sparse = False, theta1 = 0.001, theta2 = 0.01, alpha = 1/2, size_restriction = 15, B_split = None, arg1 = 0.01, arg2 = 0.0001, arg3 = 0.01, arg4= 0.0001):
         """
 
 
@@ -77,10 +77,20 @@ class ME_PCE(BaseEstimator):
         X_k = []
 
         for i in range(N):
-            if np.sum((B_k[:,0] <= X[i]) & (X[i] <= B_k[:,1])) == 3:
+            if np.sum((B_k[:,0] <= X[i]) & (X[i] <= B_k[:,1])) == self.d:
                 X_k.append(list(X[i]))
                 
         return np.c_[np.array(X_k)]
+    
+    def map_domain_to_negOne_One(self, B_k, domain_init):
+
+        domain_init = np.array(domain_init)[0]
+        a = np.c_[domain_init[:,0]]
+        b = np.c_[domain_init[:,1]]
+
+        B_k_new = 2/(b-a)*(B_k-(b+a)/2)
+
+        return B_k_new
     
     def split_domain(self, X_train, X_pol, theta1, theta2, alpha, size_restriction = 25, iter_num = 10):
         """
@@ -124,9 +134,12 @@ class ME_PCE(BaseEstimator):
                 N_p_1 = int(math.factorial(self.d + self.p-1)/(math.factorial(self.d)*math.factorial(self.p-1)))
                 eta_k = np.sum(a_vec[N_p_1:]**2)/np.sum(a_vec[1:]**2) 
                 J_k = 1
+               
 
                 for i in range(self.d):
-                    J_k *= (B[k][i][1] - B[k][i][0])/(2*np.pi)
+                    
+                    Bk_trans = self.map_domain_to_negOne_One(B[k], self.B_init)
+                    J_k *= (Bk_trans[i][1] - Bk_trans[i][0])/2
 
                 r = []
                 for i in range(self.d):
@@ -263,13 +276,16 @@ class ME_PCE(BaseEstimator):
         
     def predict(self, X_test, sparse = True):
 
+        # Add condition that checks if test data is outside of the B_split domain
         Y = np.zeros(X_test.shape[0])
         for j in range(Y.shape[0]):
             for i in range(len(self.B_split)):
+
                 if np.sum((self.B_split[i][:,0] <= X_test[j]) & (X_test[j] <= self.B_split[i][:,1])) == self.d:
                     #mod = self.mod_local[i]
                     P = self.P_local[i]
                     Y[j] += self.model_local[i].predict(X_test[j:j+1], sparse)
+
                     
         return Y
                     
