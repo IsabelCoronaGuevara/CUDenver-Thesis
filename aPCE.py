@@ -134,7 +134,13 @@ class aPCE(object):
 
             mu = np.zeros(2*p) 
             for i in range(2*p): 
-                mu[i] = np.mean(self.X[:,j]**i)
+                a = self.X.min()
+                b = self.X.max()
+                xi, w = np.polynomial.legendre.leggauss(math.ceil((i+1)/2))
+
+                mu[i] = (b-a)/2*np.sum(w*((b-a)/2*xi+(b+a)/2)**i)
+                
+                #mu[i] = (self.X[:,j].max()-self.X[:,j].min())*np.mean(self.X[:,j]**i)
 
             mu_mat = np.zeros((p, p+1))
             for i in range(p):
