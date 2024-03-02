@@ -8,6 +8,7 @@ __author__ = 'Isabel Corona Guevara'
 import numpy as np
 import math
 import pandas as pd
+from itertools import product
 
     
 class sobol_GSA(object):
