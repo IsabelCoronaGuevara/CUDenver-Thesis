@@ -67,8 +67,10 @@ class AFVB_PCE(BaseEstimator):
         idx = self.multivariate_pce_index(self.d, self.p)
 
         if (self.PCE_method == 'aPCE'):
+            
             for i in range(n):
                 for j in range(self.d):
+                    
                     Phi[:,i] *=  self.aPCE_model.Pol_eval(self.P[j][idx[i][j]], Z[:,j])
 
         elif (self.PCE_method == 'PCE_Legendre'):
