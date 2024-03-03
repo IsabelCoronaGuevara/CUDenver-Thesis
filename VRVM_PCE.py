@@ -213,6 +213,9 @@ class VRVM_PCE(BaseEstimator):
 		if (self.PCE_method == 'aPCE'):
 			for i in range(n):
 				for j in range(self.d):
+					a = Z[:,j].min()
+					b = Z[:,j].max()
+                    
 					Phi[:,i] *=  self.aPCE_model.Pol_eval(self.P[j][idx[i][j]], Z[:,j])
 		
 		elif (self.PCE_method == 'PCE_Legendre'):
