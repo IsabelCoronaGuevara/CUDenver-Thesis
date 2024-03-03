@@ -81,12 +81,21 @@ class aPCE(object):
         
         return s
 
-    def Inner_prod(self, coeff1, coeff2, dat):
+    def Inner_prod(self, coeff1, coeff2, dat, a1, b1):
         """
         Approximates the integral of the product of 2 polynomials.
         """
         
-        s = np.mean(self.Pol_eval(coeff1, dat)*self.Pol_eval(coeff2, dat))
+        a = a1 # = np.array(domain)[:,0][j]
+        b = b1 # np.array(domain)[:,1][j]
+        xi, w = np.polynomial.legendre.leggauss(self.p+1)
+
+        z = xi*(b-a)/2 + (b+a)/2
+        
+        #self.Pol_eval(coeff1, z)*self.Pol_eval(coeff2, z)
+
+        s = 1/2*np.dot(w, self.Pol_eval(coeff1, z)*self.Pol_eval(coeff2, z))
+        #s = np.mean(self.Pol_eval(coeff1, dat)*self.Pol_eval(coeff2, dat))
         
         return s
     
@@ -120,7 +129,7 @@ class aPCE(object):
             val += P[pol_d][c_idx[i][0]]*P[pol_d][c_idx[i][1]]*np.mean(dat**(np.sum(c_idx[i])))
         return np.sqrt(val)
     
-    def Create_Orthonormal_Polynomials(self, p):
+    def Create_Orthonormal_Polynomials(self, p, domain):
         """
         
         """
@@ -134,15 +143,16 @@ class aPCE(object):
 
             mu = np.zeros(2*p) 
             for i in range(2*p): 
-                a = self.X.min()
-                b = self.X.max()
+                a1 = np.array(domain)[:,0][j]
+                b1 = np.array(domain)[:,1][j]
                 xi, w = np.polynomial.legendre.leggauss(math.ceil((i+1)/2))
 
-                mu[i] = (b-a)/2*np.sum(w*((b-a)/2*xi+(b+a)/2)**i)
+                z = xi*(b1-a1)/2 + (b1+a1)/2
                 
-                #mu[i] = (self.X[:,j].max()-self.X[:,j].min())*np.mean(self.X[:,j]**i)
+                mu[i] = 1/2*np.dot(w, z**i)
 
             mu_mat = np.zeros((p, p+1))
+            
             for i in range(p):
                 mu_mat[i,:] = mu[i:(p+1+i)]
 
@@ -159,8 +169,7 @@ class aPCE(object):
             P_temp_norm = np.zeros((p+1, p+1))
             for i in range(p+1):
                 #P_temp_norm[i,:] = P_temp[i,:]/self.Norm(P_temp, self.X[:,j], i)
-                P_temp_norm[i,:] = P_temp[i,:]/(np.sqrt(self.Inner_prod(P_temp[i,:],P_temp[i,:],self.X[:,j])))
-
+                P_temp_norm[i,:] = P_temp[i,:]/(np.sqrt(self.Inner_prod(P_temp[i,:],P_temp[i,:],self.X[:,j], a1, b1)))
             # Adding Matrix with Polynomial Coefficients to P
             P.append(P_temp_norm)
             
