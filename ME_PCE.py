@@ -109,9 +109,10 @@ class ME_PCE(BaseEstimator):
         Need to be able to input P somehow
         """
         B = self.B_init
-        
+        empty = False
         for j in range(iter_num):
             B_k = []
+                
             for k in range(len(B)):
 
                 X_p = self.split_data(X_pol, np.array(B[k]))
@@ -208,6 +209,14 @@ class ME_PCE(BaseEstimator):
                     
             # stop the iteration if no splitting is to occur next
             if B == B_k:
+                break
+                
+            for j in range(len(B)):
+                if (self.split_data(X_train, np.array(B_k[j])).shape[0] == 0):
+                    empty = True
+            
+            if empty is True:
+                #print('empty data, stop algorithm')
                 break
 
             B = B_k.copy()
