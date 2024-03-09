@@ -109,7 +109,7 @@ class ME_PCE(BaseEstimator):
         Need to be able to input P somehow
         """
         B = self.B_init
-        empty = False
+        size_reached = False
         for j in range(iter_num):
             B_k = []
                 
@@ -154,7 +154,7 @@ class ME_PCE(BaseEstimator):
                     
                     r.append(r_i)
 
-                if (eta_k**alpha*J_k >= theta1) & (X_t.shape[0]/2**np.sum(theta2*np.max(r)<=r) >= size_restriction):
+                if (eta_k**alpha*J_k >= theta1): #& (X_t.shape[0]/2**np.sum(theta2*np.max(r)<=r) >= size_restriction):
                     # If this isn't true then we don't split up B_k
                     #print('Splitting', 'time =', j)
 
@@ -212,11 +212,11 @@ class ME_PCE(BaseEstimator):
                 break
                 
             for j in range(len(B)):
-                if (self.split_data(X_train, np.array(B_k[j])).shape[0] == 0):
-                    empty = True
+                if (self.split_data(X_train, np.array(B_k[j])).shape[0] < self.size_restriction):
+                    size_reached = True
             
-            if empty is True:
-                #print('empty data, stop algorithm')
+            if size_reached is True:
+                #print('not enough data in region, stop algorithm')
                 break
 
             B = B_k.copy()
