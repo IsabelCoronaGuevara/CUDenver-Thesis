@@ -120,7 +120,7 @@ class ME_PCE(BaseEstimator):
                 Y_t = self.fun(X_t)
 
                 mod = aPCE(X_p, self.p)
-                P = mod.Create_Orthonormal_Polynomials_MC(self.p)  ######
+                P = mod.Create_Orthonormal_Polynomials(self.p)  ######
 
                 model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
                 
@@ -248,7 +248,7 @@ class ME_PCE(BaseEstimator):
 
                 mod = aPCE(X_p, self.p)
                 mod_local.append(mod)
-                P = mod.Create_Orthonormal_Polynomials_MC(self.p)
+                P = mod.Create_Orthonormal_Polynomials(self.p)
                 P_local.append(P)
 
                 model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
@@ -272,7 +272,7 @@ class ME_PCE(BaseEstimator):
 
                 mod = aPCE(X_p, self.p)
                 mod_local.append(mod)
-                P = mod.Create_Orthonormal_Polynomials_MC(self.p)
+                P = mod.Create_Orthonormal_Polynomials(self.p)
                 P_local.append(P)
 
                 model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
