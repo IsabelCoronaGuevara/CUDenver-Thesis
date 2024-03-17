@@ -22,6 +22,7 @@ from sklearn.base import BaseEstimator
 from itertools import product
 import sys
 from scipy.special import legendre
+from basis_functions import *
 
 
 # In[13]:
@@ -160,7 +161,7 @@ class VRVM_PCE(BaseEstimator):
 	# L component
 	_expL = None
 
-	def __init__(self, PCE_method, d, p = 8, domain = None, aPCE_model = None, P = None, omega_a = 10**(-6), omega_b = 10**(-6), tau_a = 10**(-6), tau_b = 10**(-6), pi_a = 0.2, pi_b = 1.0):
+	def __init__(self, PCE_method, d, p = 8, domain = None, aPCE_model = None, P = None, omega_a = 10**(-6), omega_b = 10**(-6), tau_a = 10**(-6), tau_b = 10**(-6), pi_a = 0.2, pi_b = 1.0, sigma_vals = None, mu_vals = None):
 		"""
 		Initializes the object
 		"""
@@ -178,6 +179,15 @@ class VRVM_PCE(BaseEstimator):
 		self.pi_b = pi_b
 		self._prior_params = {'omega' : [self.omega_a, self.omega_b], 'tau': [self.tau_a, self.tau_b], 'pi': [self.pi_a, self.pi_b]}
         
+		if (PCE_method == 'aPCE'):
+			self.basis = basis(self.d, self.p, self.domain, self.aPCE_model, self.P).basis_aPCE
+            
+		elif (PCE_method == 'PCE_Legendre'):
+			self.basis = basis(self.d, self.p, self.domain).basis_PCE_Legendre
+        
+		elif (PCE_method == 'PCE_Hermite'):
+			self.basis = basis(self.d, self.p, self.domain, self.aPCE_model, self.P, self.sigma_vals, self.mu_vals).basis_PCE_Hermite
+        
 	def multivariate_pce_index(self, d, max_deg):
 		"""
 		Generate all the d-dimensional polynomial indices with the 
@@ -194,40 +204,6 @@ class VRVM_PCE(BaseEstimator):
 		index = np.array([i for i in product(*(range(i + 1) for i in maxRange)) if sum(i) <= max_deg])
 		
 		return index
-    
-	def basis(self, Z):
-		"""
-		PCE_method: aPCE or PCE_Legendre
-		aPCE_model: mod or None
-		P: P or P_Steiltjs or None
-		domain: Looks like np.array([[a,b], [a,b], [a,b], ...])
-		"""
-		        
-		
-		N = Z.shape[0]
-		n = int(math.factorial(self.d + self.p)/(math.factorial(self.d)*math.factorial(self.p)))
-		
-		Phi = np.ones((N, n))
-		idx = self.multivariate_pce_index(self.d, self.p)
-		
-		if (self.PCE_method == 'aPCE'):
-			for i in range(n):
-				for j in range(self.d):
-					a = Z[:,j].min()
-					b = Z[:,j].max()
-                    
-					Phi[:,i] *=  self.aPCE_model.Pol_eval(self.P[j][idx[i][j]], Z[:,j])
-		
-		elif (self.PCE_method == 'PCE_Legendre'):
-			a = np.array(self.domain)[:,0]
-			b = np.array(self.domain)[:,1]
-			for i in range(n):
-				for j in range(self.d):
-					Phi[:,i] *=  math.sqrt((2*idx[i][j]+1)/1)*legendre(idx[i][j])((a[j]+b[j]-2*Z[:,j])/(a[j]-b[j]))
-		else: 
-			print('Proper PCE_method not given')
-		
-		return Phi
 
 #### For the following z_c_... definitions we can look at Eq. 28 - 32        
 
