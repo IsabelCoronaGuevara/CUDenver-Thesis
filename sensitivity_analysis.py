@@ -138,6 +138,46 @@ class sobol_GSA(object):
                 "1st Order" : S_Partial,
                 "Total Order" : S_Total
             })
+            
+        return GSA_df, V
+            
+    def sobol_ME(self, p, a, active_cols, global_mean, global_V):
+        """
+        """
+        
+        V = global_V #np.sum(a[1:]**2)
+        V_Partial = []
+        V_Total = []
+        S_Partial = []
+        S_Total = []
+        
+        idx = self.multivariate_pce_index(self.d, p)
+
+        for k in range(self.d):
+            l = list(range(self.d))
+            l.remove(k)
+
+            temp = np.full(idx[active_cols].shape[0], True, dtype = bool)
+
+            for i in range(idx[active_cols].shape[0]):
+                temp[i] = (idx[active_cols][i][k] != 0) & (sum(idx[active_cols][i][l]) == 0)
+
+            V_Partial.append(np.sum(a[temp]**2))
+            S_Partial.append(np.sum(a[temp]**2)/V)
+
+            for i in range(idx[active_cols].shape[0]):
+                temp[i] = idx[active_cols][i][k] != 0
+                
+            V_Total.append(np.sum(a[temp]**2))
+            S_Total.append(np.sum(a[temp]**2)/V)
+
+            GSA_df = pd.DataFrame({
+                #"variable" : list(range(1,d+1)),
+                "Partial Variance" : V_Partial,
+                "Total Variance" : V_Total,
+                "1st Order" : S_Partial,
+                "Total Order" : S_Total
+            })
 
 
         return GSA_df, V
