@@ -11,11 +11,12 @@ import sys
 from sklearn.base import BaseEstimator
 from scipy.special import legendre
 from aPCE import *
+from basis_functions import *
 
 class AFVB_PCE(BaseEstimator):
     
     
-    def __init__(self, PCE_method, d, p = 8, domain = None, aPCE_model = None, P = None, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000):
+    def __init__(self, PCE_method, d, p = 8, domain = None, aPCE_model = None, P = None, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000, sigma_vals = None, mu_vals = None):
         """
         Initializes the object
         """
@@ -33,6 +34,17 @@ class AFVB_PCE(BaseEstimator):
         self.PCE_method = PCE_method
         self.P = P
         self.domain = domain
+        self.sigma_vals = sigma_vals
+        self.mu_vals = mu_vals
+        
+        if (PCE_method == 'aPCE'):
+            self.basis = basis(self.d, self.p, self.domain, self.aPCE_model, self.P).basis_aPCE
+            
+        elif (PCE_method == 'PCE_Legendre'):
+            self.basis = basis(self.d, self.p, self.domain).basis_PCE_Legendre
+        
+        elif (PCE_method == 'PCE_Hermite'):
+            self.basis = basis(self.d, self.p, self.domain, self.aPCE_model, self.P, self.sigma_vals, self.mu_vals).basis_PCE_Hermite
         
     def multivariate_pce_index(self, d, max_deg):
         """
@@ -50,39 +62,6 @@ class AFVB_PCE(BaseEstimator):
         index = np.array([i for i in product(*(range(i + 1) for i in maxRange)) if sum(i) <= max_deg])
 
         return index
-    
-    def basis(self, Z):
-        """
-        PCE_method: aPCE or PCE_Legendre
-        aPCE_model: mod or None
-        P: P or P_Steiltjs or None
-        domain: Looks like np.array([[a,b], [a,b], [a,b], ...])
-        """
-        
-
-        N = Z.shape[0]
-        n = int(math.factorial(self.d + self.p)/(math.factorial(self.d)*math.factorial(self.p)))
-
-        Phi = np.ones((N, n))
-        idx = self.multivariate_pce_index(self.d, self.p)
-
-        if (self.PCE_method == 'aPCE'):
-            
-            for i in range(n):
-                for j in range(self.d):
-                    
-                    Phi[:,i] *=  self.aPCE_model.Pol_eval(self.P[j][idx[i][j]], Z[:,j])
-
-        elif (self.PCE_method == 'PCE_Legendre'):
-            a = np.array(self.domain)[:,0]
-            b = np.array(self.domain)[:,1]
-            for i in range(n):
-                for j in range(self.d):
-                    Phi[:,i] *=  math.sqrt((2*idx[i][j]+1)/1)*legendre(idx[i][j])((a[j]+b[j]-2*Z[:,j])/(a[j]-b[j]))
-        else: 
-            print('Proper PCE_method not given')
-
-        return Phi
         
     def fit(self, X, Y):
         
@@ -109,7 +88,7 @@ class AFVB_PCE(BaseEstimator):
         ### An array made in order to keep track of which column numbers
         ### Phi_hat kept in the end
         col_full = []
-        col = np.array(range(0,Phi_in.shape[1]))
+        col = np.array(range(Phi_in.shape[1]))
         col_full.append(col)
         a_all = []
         chi_all = []
