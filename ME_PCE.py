@@ -22,7 +22,7 @@ class ME_PCE(BaseEstimator):
     
     """
     
-    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, X_pol, sparse = False, theta1 = 0.001, theta2 = 0.01, alpha = 1/2, size_restriction = 15, B_split = None, arg1 = 0.01, arg2 = 0.0001, arg3 = 0.01, arg4= 0.0001):
+    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, X_pol, sparse = False, theta1 = 0.001, theta2 = 0.01, alpha = 0.5, size_restriction = 15, arg1 = 0.01, arg2 = 0.0001, arg3 = 0.01, arg4= 0.0001):
         """
 
 
@@ -44,7 +44,6 @@ class ME_PCE(BaseEstimator):
         self.arg2 = arg2
         self.arg3 = arg3
         self.arg4 = arg4
-        self.B_split = B_split
         
     def multivariate_pce_index(self, d, max_deg):
         """
@@ -70,17 +69,17 @@ class ME_PCE(BaseEstimator):
         B_k: domains, needs to be an array of size d x 2
         """
         
-        B_k = np.array(B_k)
+        B = np.array(B_k)
 
         N = X.shape[0]
         d = X.shape[1]
         X_k = []
 
         for i in range(N):
-            if np.sum((B_k[:,0] <= X[i]) & (X[i] <= B_k[:,1])) == self.d:
+            if np.sum((B[:,0] <= X[i]) & (X[i] <= B[:,1])) == self.d:
                 X_k.append(list(X[i]))
                 
-        return np.c_[np.array(X_k)]
+        return np.array(X_k)
     
     def map_domain_to_negOne_One(self, B_k, domain_init):
 
@@ -233,55 +232,57 @@ class ME_PCE(BaseEstimator):
         self.d = X_train.shape[1] # number of parameters
         self.n = int(math.factorial(self.d + self.p)/(math.factorial(self.d)*math.factorial(self.p)))
         
-        if self.B_split is None: # use this when we are optimizing theta1, theta2, alpha
-            model_local = []
-            P_local = []
-            mod_local = []
+        model_local = []
+        P_local = []
+        mod_local = []
+        mean_local = []
+        v_local = []
+        a_local = []
+        active_cols_local = []
+        Jk = []
+        n_star_local = []
 
-            B = self.split_domain(X_train, self.X_pol, self.theta1, self.theta2, self.alpha, self.size_restriction)
+        B = self.split_domain(X_train, self.X_pol, self.theta1, self.theta2, self.alpha, self.size_restriction)
 
-            for k in range(len(B)):
-                X_p = self.split_data(self.X_pol, B[k])
-                X_t = self.split_data(X_train, B[k])
-                #print(X_t.shape[0], 'k =', k)
-                Y_t = self.fun(X_t)
+        for k in range(len(B)):
+            X_p = self.split_data(self.X_pol, B[k])
+            X_t = self.split_data(X_train, B[k])
+            #print(X_t.shape[0], 'k =', k)
+            Y_t = self.fun(X_t)
 
-                mod = aPCE(X_p, self.p)
-                mod_local.append(mod)
-                P = mod.Create_Orthonormal_Polynomials(self.p)
-                P_local.append(P)
+            mod = aPCE(X_p, self.p)
+            mod_local.append(mod)
+            P = mod.Create_Orthonormal_Polynomials(self.p)
+            P_local.append(P)
 
-                model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
-                model_local.append(model)
-
-            self.B_split = B
-            self.P_local = P_local
-            self.model_local = model_local
-            self.mod_local = mod_local
-        else: # use this when we are optimizing parameters of AFVB or VRVM. We already have arguments for preditions in this case.
-            model_local = []
-            P_local = []
-            mod_local = []
-            B = self.B_split
+            model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
             
-            for k in range(len(B)):
-                X_p = self.split_data(self.X_pol, B[k])
-                X_t = self.split_data(X_train, B[k])
-                #print(X_t.shape[0], 'k =', k)
-                Y_t = self.fun(X_t)
+            J_k = 1
+            for i in range(self.d):
+                Bk_trans = self.map_domain_to_negOne_One(B[k], self.B_init)
+                J_k *= (Bk_trans[i][1] - Bk_trans[i][0])/2
+                
+            Jk.append(J_k)
+            model_local.append(model)
+            mean_local.append(float(model.a_hat[0]))
+            v_local.append(np.sum(model.a_hat[1:]**2))
+            a_local.append(model.a_hat)
+            active_cols_local.append(model.active_cols)
+            n_star_local.append(model.n_star)
 
-                mod = aPCE(X_p, self.p)
-                mod_local.append(mod)
-                P = mod.Create_Orthonormal_Polynomials(self.p)
-                P_local.append(P)
-
-                model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
-                model_local.append(model)
-
-            self.P_local = P_local
-            self.model_local = model_local
-            self.mod_local = mod_local
-           
+        self.B_split = B
+        self.P_local = P_local
+        self.model_local = model_local
+        self.mod_local = mod_local
+        self.mean_local = np.array(mean_local)
+        self.a_local = a_local
+        self.v_local = np.array(v_local)
+        self.active_cols_local = active_cols_local
+        self.Jk = np.array(Jk)
+        self.n_star_local = n_star_local
+        
+        return self
+        
         
     def predict(self, X_test, sparse = True):
 
