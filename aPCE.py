@@ -260,7 +260,7 @@ class aPCE(object):
             P_temp_norm = np.zeros((self.p+1, self.p+1))
             for i in range(self.p+1):
                 #P_temp_norm[i,:] = P_temp[i,:]/self.Norm(P_temp, self.X[:,j], i)
-                P_temp_norm[i,:] = P_temp[i,:]/(np.sqrt(self.Inner_prod(P_temp[i,:],P_temp[i,:],self.X[:,j])))
+                P_temp_norm[i,:] = P_temp[i,:]/(np.sqrt(self.Inner_prod_MC(P_temp[i,:],P_temp[i,:],self.X[:,j])))
 
             # Adding Matrix with Polynomial Coefficients to P
             P.append(P_temp_norm)
