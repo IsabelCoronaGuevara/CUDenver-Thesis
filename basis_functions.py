@@ -71,6 +71,7 @@ class basis(object):
                 Phi[:,i] *=  self.aPCE_model.Pol_eval(self.P[j][idx[i][j]], Z[:,j])
 
         return Phi
+ 
 
     def basis_PCE_Legendre(self, Z):
         """
