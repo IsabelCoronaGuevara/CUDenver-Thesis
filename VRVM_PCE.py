@@ -182,6 +182,9 @@ class VRVM_PCE(BaseEstimator):
 		if (PCE_method == 'aPCE'):
 			self.basis = basis(self.d, self.p, self.domain, self.aPCE_model, self.P).basis_aPCE
             
+		elif (PCE_method == 'aPCE_Stieltjes'):
+			self.basis = basis(self.d, self.p, None, self.aPCE_model, self.P).basis_aPCE
+            
 		elif (PCE_method == 'PCE_Legendre'):
 			self.basis = basis(self.d, self.p, self.domain).basis_PCE_Legendre
         
