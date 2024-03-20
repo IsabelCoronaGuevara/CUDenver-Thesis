@@ -22,9 +22,9 @@ class ME_PCE(BaseEstimator):
     
     """
     
-    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, X_pol, sparse = False, theta1 = 0.001, theta2 = 0.01, alpha = 0.5, size_restriction = 15, arg1 = 0.01, arg2 = 0.0001, arg3 = 0.01, arg4= 0.0001):
+    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, X_pol = None, sparse = False, theta1 = 0.001, theta2 = 0.01, alpha = 0.5, size_restriction = 25, arg1 = 0.01, arg2 = 0.0001, arg3 = 0.01, arg4= 0.0001, sigma_vals = None, mu_vals = None):
         """
-
+        PCE_method: 'aPCE' or 'aPCE_Stieltjes' or 'PCE_Legendre' or 'PCE_Hermite'
 
         """
         
@@ -44,6 +44,8 @@ class ME_PCE(BaseEstimator):
         self.arg2 = arg2
         self.arg3 = arg3
         self.arg4 = arg4
+        self.sigma_vals = sigma_vals
+        self.mu_vals = mu_vals
         
     def multivariate_pce_index(self, d, max_deg):
         """
@@ -113,15 +115,23 @@ class ME_PCE(BaseEstimator):
             B_k = []
                 
             for k in range(len(B)):
-
-                X_p = self.split_data(X_pol, np.array(B[k]))
+                
+                if (self.PCE_method == 'aPCE'):
+                    X_p = self.split_data(X_pol, np.array(B[k]))
+                    mod = aPCE(X_p, self.p)
+                    P = mod.Create_Orthonormal_Polynomials(self.p)  ######
+                elif (self.PCE_method == 'aPCE_Stieltjes'):
+                    X_p = self.split_data(X_pol, np.array(B[k]))
+                    mod = aPCE(X_p, self.p)
+                    P = mod.Create_Orthonormal_Polynomials_Stieltjes(self.p)
+                else:
+                    mod = None
+                    P = None
+                    
                 X_t = self.split_data(X_train, np.array(B[k]))
                 Y_t = self.fun(X_t)
 
-                mod = aPCE(X_p, self.p)
-                P = mod.Create_Orthonormal_Polynomials(self.p)  ######
-
-                model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
+                model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4, sigma_vals = self.sigma_vals, mu_vals = self.mu_vals).fit(X_t, Y_t.reshape(X_t.shape[0]))
                 
                 if self.sparse is True:
                     a_vec = np.zeros((self.n,1))
@@ -245,17 +255,29 @@ class ME_PCE(BaseEstimator):
         B = self.split_domain(X_train, self.X_pol, self.theta1, self.theta2, self.alpha, self.size_restriction)
 
         for k in range(len(B)):
-            X_p = self.split_data(self.X_pol, B[k])
+            
+            if (self.PCE_method == 'aPCE'):    
+                X_p = self.split_data(self.X_pol, B[k])
+                mod = aPCE(X_p, self.p)
+                mod_local.append(mod)
+                P = mod.Create_Orthonormal_Polynomials(self.p)
+                P_local.append(P)
+                
+            elif (self.PCE_method == 'aPCE_Stieltjes'):    
+                X_p = self.split_data(self.X_pol, B[k])
+                mod = aPCE(X_p, self.p)
+                mod_local.append(mod)
+                P = mod.Create_Orthonormal_Polynomials_Stieltjes(self.p)
+                P_local.append(P)
+            else:
+                mod = None
+                P = None
+                
             X_t = self.split_data(X_train, B[k])
             #print(X_t.shape[0], 'k =', k)
             Y_t = self.fun(X_t)
 
-            mod = aPCE(X_p, self.p)
-            mod_local.append(mod)
-            P = mod.Create_Orthonormal_Polynomials(self.p)
-            P_local.append(P)
-
-            model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4).fit(X_t, Y_t.reshape(X_t.shape[0]))
+            model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4, sigma_vals = self.sigma_vals, mu_vals = self.mu_vals).fit(X_t, Y_t.reshape(X_t.shape[0]))
             
             J_k = 1
             for i in range(self.d):
@@ -292,8 +314,7 @@ class ME_PCE(BaseEstimator):
             for i in range(len(self.B_split)):
 
                 if np.sum((self.B_split[i][:,0] <= X_test[j]) & (X_test[j] <= self.B_split[i][:,1])) == self.d:
-                    #mod = self.mod_local[i]
-                    P = self.P_local[i]
+                        
                     Y[j] += self.model_local[i].predict(X_test[j:j+1], sparse)
 
                     
