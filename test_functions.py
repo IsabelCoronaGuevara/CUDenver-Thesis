@@ -229,10 +229,10 @@ def cantilever(X):
     P = X[:,5]
     T = X[:,6]
 
-    L1 = 0.06
-    L2 = 0.12
-    Theta1 = 10
-    Theta2 = 5
+    L1 = 60
+    L2 = 120
+    Theta1 = np.pi/18
+    Theta2 = np.pi/36
 
 
     M = F1*np.cos(Theta1)*L1 + F2*np.cos(Theta2)*L2
@@ -241,7 +241,7 @@ def cantilever(X):
     sigma_x = (F1*np.sin(Theta1) + F2*np.sin(Theta2) + P)/A + M*D/(2*I)
     tau_zx = T*D/(4*I)
 
-    val = R0/(np.sqrt(sigma_x**2 + 3*tau_zx**2)*10**(-6)) # Units in MPa
+    val = R0/np.sqrt(sigma_x**2 + 3*tau_zx**2) # Units in MPa = N/mm^2
 
     return val
 
@@ -259,8 +259,8 @@ def cantilever_data(N):
 
     X = np.zeros((N, 7))
 
-    D_mu = 0.042
-    h_mu = 0.005
+    D_mu = 42
+    h_mu = 5
     R0_mu = 560
     F_mu = 1800
     P_mu = 1000
