@@ -38,13 +38,16 @@ class AFVB_PCE(BaseEstimator):
         self.mu_vals = mu_vals
         
         if (PCE_method == 'aPCE'):
-            self.basis = basis(self.d, self.p, self.domain, self.aPCE_model, self.P).basis_aPCE
+            self.basis = basis(self.d, self.p, None, self.aPCE_model, self.P).basis_aPCE
+            
+        elif (PCE_method == 'aPCE_Stieltjes'):
+            self.basis = basis(self.d, self.p, None, self.aPCE_model, self.P).basis_aPCE
             
         elif (PCE_method == 'PCE_Legendre'):
             self.basis = basis(self.d, self.p, self.domain).basis_PCE_Legendre
         
         elif (PCE_method == 'PCE_Hermite'):
-            self.basis = basis(self.d, self.p, self.domain, self.aPCE_model, self.P, self.sigma_vals, self.mu_vals).basis_PCE_Hermite
+            self.basis = basis(self.d, self.p, self.domain, None, None, self.sigma_vals, self.mu_vals).basis_PCE_Hermite
         
     def multivariate_pce_index(self, d, max_deg):
         """
