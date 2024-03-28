@@ -110,12 +110,12 @@ class ME_PCE(BaseEstimator):
         Need to be able to input P somehow
         """
         B = self.B_init
-        size_reached = False
+        
         for j in range(iter_num):
             B_k = []
                 
             for k in range(len(B)):
-                
+                size_reached = False    
                 if (self.PCE_method == 'aPCE'):
                     X_p = self.split_data(X_pol, np.array(B[k]))
                     mod = aPCE(X_p, self.p)
@@ -132,11 +132,11 @@ class ME_PCE(BaseEstimator):
                 Y_t = self.fun(X_t)
 
                 model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4, sigma_vals = self.sigma_vals, mu_vals = self.mu_vals).fit(X_t, Y_t.reshape(X_t.shape[0]))
-                
+
                 if self.sparse is True:
                     a_vec = np.zeros((self.n,1))
                     a_vec[model.active_cols] = np.c_[model.a_full[model.active_cols]]
-                    
+
                 elif self.sparse is False:
                     a_vec = model.a_full
 
@@ -144,10 +144,10 @@ class ME_PCE(BaseEstimator):
                 N_p_1 = int(math.factorial(self.d + self.p-1)/(math.factorial(self.d)*math.factorial(self.p-1)))
                 eta_k = np.sum(a_vec[N_p_1:]**2)/np.sum(a_vec[1:]**2) 
                 J_k = 1
-               
+
 
                 for i in range(self.d):
-                    
+
                     Bk_trans = self.map_domain_to_negOne_One(B[k], self.B_init)
                     J_k *= (Bk_trans[i][1] - Bk_trans[i][0])/2
 
@@ -160,7 +160,7 @@ class ME_PCE(BaseEstimator):
                         r_i = 1
                     else:
                         r_i = float(a_vec[np.nonzero(np.sum(self.idx == l, 1) == self.d)])**2/np.sum(a_vec[N_p_1:]**2)
-                    
+
                     r.append(r_i)
 
                 if (eta_k**alpha*J_k >= theta1): #& (X_t.shape[0]/2**np.sum(theta2*np.max(r)<=r) >= size_restriction):
@@ -207,26 +207,34 @@ class ME_PCE(BaseEstimator):
                                 B_new[t].append(B_temp[i][0])
                                 t += 1
                     #print(B_new)
-                    B_k = B_k+B_new
-
+                    for j in range(len(B_new)):
+                        if (self.split_data(X_train, np.array(B_new[j])).shape[0] < self.size_restriction):
+                            size_reached = True
+                        
+                    if size_reached is False:
+                        B_k = B_k+B_new
+                    else:
+                        B_new = B[k]
+                        B_k = B_k + [B_new]
+                    
                 else:
                     #print('Not Splitting', 'time =', j, 'k =', k)
                     B_new = B[k]
                     #print(B_k)
                     B_k = B_k+[B_new]
                     #print(B_new)
-                    
+
             # stop the iteration if no splitting is to occur next
             if B == B_k:
                 break
                 
-            for j in range(len(B)):
-                if (self.split_data(X_train, np.array(B_k[j])).shape[0] < self.size_restriction):
-                    size_reached = True
+            #for j in range(len(B)):
+                #if (self.split_data(X_train, np.array(B_k[j])).shape[0] < self.size_restriction):
+                    #size_reached = True
             
-            if size_reached is True:
+            #if size_reached is True:
                 #print('not enough data in region, stop algorithm')
-                break
+                #break
 
             B = B_k.copy()
             
@@ -248,6 +256,7 @@ class ME_PCE(BaseEstimator):
         mean_local = []
         v_local = []
         a_local = []
+        a_local_full = []
         active_cols_local = []
         Jk = []
         n_star_local = []
@@ -291,6 +300,7 @@ class ME_PCE(BaseEstimator):
             a_local.append(model.a_hat)
             active_cols_local.append(model.active_cols)
             n_star_local.append(model.n_star)
+            a_local_full.append(model.a_full)
 
         self.B_split = B
         self.P_local = P_local
@@ -302,6 +312,7 @@ class ME_PCE(BaseEstimator):
         self.active_cols_local = active_cols_local
         self.Jk = np.array(Jk)
         self.n_star_local = n_star_local
+        self.a_local_full = a_local_full
         
         return self
         
