@@ -145,7 +145,7 @@ class sobol_GSA(object):
         """
         """
         
-        V = global_V #np.sum(a[1:]**2)
+        V = np.sum(a[1:]**2)
         V_Partial = []
         V_Total = []
         S_Partial = []
