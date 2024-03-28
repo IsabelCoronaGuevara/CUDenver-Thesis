@@ -177,6 +177,8 @@ class VRVM_PCE(BaseEstimator):
 		self.tau_b = tau_b
 		self.pi_a = pi_a
 		self.pi_b = pi_b
+		self.sigma_vals = sigma_vals
+		self.mu_vals = mu_vals
 		self._prior_params = {'omega' : [self.omega_a, self.omega_b], 'tau': [self.tau_a, self.tau_b], 'pi': [self.pi_a, self.pi_b]}
         
 		if (PCE_method == 'aPCE'):
