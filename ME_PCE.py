@@ -241,7 +241,7 @@ class ME_PCE(BaseEstimator):
         Jk = []
         n_star_local = []
         
-        if self.n_iter == 0:
+        if (self.n_iter == 0):
             B = self.B_init
         else:
             B = self.split_domain(self.N_t, self.N_p, self.theta1, self.theta2, self.alpha, self.n_iter)
@@ -265,7 +265,7 @@ class ME_PCE(BaseEstimator):
                 mod = None
                 P = None
          
-            if self.n_iter == 0:
+            if (self.n_iter == 0):
                 X_t = self.split_data(X_train, B[k])
             else:
                 X_t = self.data_fun(self.N_t, self.d, B[k])
