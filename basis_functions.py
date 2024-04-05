@@ -19,7 +19,7 @@ from basis_functions import *
 class basis(object):
     
     
-    def __init__(self, d, p = 8, domain = None, aPCE_model = None, P = None, sigma_vals = None, mu_vals = None):
+    def __init__(self, d, p, domain = None, aPCE_model = None, P = None, sigma_vals = None, mu_vals = None):
         """
         Initializes the object
         """
