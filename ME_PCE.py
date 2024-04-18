@@ -274,24 +274,23 @@ class ME_PCE(BaseEstimator):
 
             model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4, sigma_vals = self.sigma_vals, mu_vals = self.mu_vals).fit(X_t, Y_t.reshape(X_t.shape[0]))
             
-            if self.n_iter != 0:
-                J_k = 1
-                Jk_i_temp = []
-                for i in range(self.d):
-                    Bk_trans = self.map_domain_to_negOne_One(B[k], self.B_init)
-                    J_k *= (Bk_trans[i][1] - Bk_trans[i][0])/2
-                    Jk_i_temp.append((Bk_trans[i][1] - Bk_trans[i][0])/2)
+            J_k = 1
+            Jk_i_temp = []
+            for i in range(self.d):
+                Bk_trans = self.map_domain_to_negOne_One(B[k], self.B_init)
+                J_k *= (Bk_trans[i][1] - Bk_trans[i][0])/2
+                Jk_i_temp.append((Bk_trans[i][1] - Bk_trans[i][0])/2)
 
-                Jk_i.append(Jk_i_temp)
+            Jk_i.append(Jk_i_temp)
 
-                Jk.append(J_k)
-                model_local.append(model)
-                mean_local.append(float(model.a_hat[0]))
-                v_local.append(np.sum(model.a_hat[1:]**2))
-                a_local.append(model.a_hat)
-                active_cols_local.append(model.active_cols)
-                n_star_local.append(model.n_star)
-                a_local_full.append(model.a_full)
+            Jk.append(J_k)
+            model_local.append(model)
+            mean_local.append(float(model.a_hat[0]))
+            v_local.append(np.sum(model.a_hat[1:]**2))
+            a_local.append(model.a_hat)
+            active_cols_local.append(model.active_cols)
+            n_star_local.append(model.n_star)
+            a_local_full.append(model.a_full)
 
         self.B_split = B
         self.P_local = P_local
