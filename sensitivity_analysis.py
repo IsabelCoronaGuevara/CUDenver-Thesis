@@ -141,7 +141,7 @@ class sobol_GSA(object):
             
         return GSA_df, V
             
-    def sobol_ME(self, p, a, active_cols, global_mean, global_V):
+    def sobol_ME(self, p, a, active_cols):
         """
         """
         
