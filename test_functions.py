@@ -207,7 +207,7 @@ def cantilever(X):
     """
     Evaluate the cantilever function. 
 
-    Inputs:
+    Inputs: 
     X: n-dim array of size (n_sample, 6)
         * x1 ~ N(42, 0.4998^2) (mm)
         * x2 ~ N(5, 0.1^2) (mm)
@@ -223,7 +223,7 @@ def cantilever(X):
 
     D = X[:,0]
     h = X[:,1]
-    R0 = X[:,2]
+    R = X[:,2]
     F1 = X[:,3]
     F2 = X[:,4]
     P = X[:,5]
@@ -231,17 +231,17 @@ def cantilever(X):
 
     L1 = 60
     L2 = 120
-    Theta1 = np.pi/18
-    Theta2 = np.pi/36
+    Theta1 = 10*np.pi/180
+    Theta2 = 5*np.pi/180
 
 
-    M = F1*np.cos(Theta1)*L1 + F2*np.cos(Theta2)*L2
+    M = F1*L1*np.cos(Theta1) + F2*L2*np.cos(Theta2)
     A = np.pi/4*(D**2 - (D - 2*h)**2)
     I = np.pi/64*(D**4 - (D - 2*h)**4)
     sigma_x = (F1*np.sin(Theta1) + F2*np.sin(Theta2) + P)/A + M*D/(2*I)
     tau_zx = T*D/(4*I)
 
-    val = R0/np.sqrt(sigma_x**2 + 3*tau_zx**2) # Units in MPa = N/mm^2
+    val = R/np.sqrt(sigma_x**2 + 3*tau_zx**2) # Units in MPa = N/mm^2
 
     return val
 
@@ -261,15 +261,15 @@ def cantilever_data(N):
 
     D_mu = 42
     h_mu = 5
-    R0_mu = 560
+    R_mu = 560
     F_mu = 1800
     P_mu = 1000
-    T_mu = 1900
+    T_mu = 1900*1000
 
     # D, h, R0, F1, F2, P, T
     X[:,0] = np.random.normal(D_mu, D_mu*0.0119, N)
     X[:,1] = np.random.normal(h_mu, h_mu*0.02, N)
-    X[:,2] = np.random.normal(R0_mu, R0_mu*0.1, N)
+    X[:,2] = np.random.normal(R_mu, R_mu*0.1, N)
     X[:,3] = np.random.normal(F_mu, F_mu*0.1, N)
     X[:,4] = np.random.normal(F_mu, F_mu*0.1, N)
     X[:,5] = np.random.normal(P_mu, P_mu*0.1, N)
