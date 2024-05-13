@@ -265,10 +265,10 @@ class ME_PCE(BaseEstimator):
                 mod = None
                 P = None
          
-            if (self.n_iter == 0):
-                X_t = self.split_data(X_train, B[k])
-            else:
-                X_t = self.data_fun(self.N_t, self.d, B[k])
+            #if (self.n_iter == 0):
+                #X_t = self.split_data(X_train, B[k])
+            #else:
+            X_t = self.data_fun(self.N_t, self.d, B[k])
             #print(X_t.shape[0], 'k =', k)
             Y_t = self.fun(X_t)
 
@@ -285,7 +285,10 @@ class ME_PCE(BaseEstimator):
 
             Jk.append(J_k)
             model_local.append(model)
-            mean_local.append(float(model.a_hat[0]))
+            if model.a_hat.shape[0] == 0:
+                mean_local.append(float(model.a_full[0]))
+            else:
+                mean_local.append(float(model.a_hat[0]))
             v_local.append(np.sum(model.a_hat[1:]**2))
             a_local.append(model.a_hat)
             active_cols_local.append(model.active_cols)
