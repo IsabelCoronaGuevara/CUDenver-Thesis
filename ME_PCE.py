@@ -22,7 +22,7 @@ class ME_PCE(BaseEstimator):
     
     """
     
-    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, data_fun, N_t, N_p, theta1 = 0.00001, theta2 = 0.00001, alpha = 0.5, arg1 = 0.01, arg2 = 0.0001, arg3 = 0.01, arg4= 0.0001, sigma_vals = None, mu_vals = None, n_iter = 2):
+    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, data_fun, N_t, N_p, theta1 = 0.00001, theta2 = 0.00001, alpha = 0.5, arg1 = [0.01], arg2 = [0.0001], arg3 = [0.01], arg4= [0.0001], sigma_vals = None, mu_vals = None, n_iter = 2):
         """
         PCE_method: 'aPCE' or 'aPCE_Stieltjes' or 'PCE_Legendre' or 'PCE_Hermite'
         alg_mod: AFVB_PCE or VRVM_PCE
@@ -133,7 +133,12 @@ class ME_PCE(BaseEstimator):
                 X_t = self.data_fun(N_t, self.d, B[k])
                 Y_t = self.fun(X_t)
 
-                model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4, sigma_vals = self.sigma_vals, mu_vals = self.mu_vals).fit(X_t, Y_t.reshape(X_t.shape[0]))
+                model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, 
+                                     self.arg1[k], 
+                                     self.arg2[k], 
+                                     self.arg3[k], 
+                                     self.arg4[k], 
+                                     sigma_vals = self.sigma_vals, mu_vals = self.mu_vals).fit(X_t, Y_t.reshape(X_t.shape[0]))
 
                 a_vec = model.a_full
 
@@ -265,14 +270,19 @@ class ME_PCE(BaseEstimator):
                 mod = None
                 P = None
          
-            #if (self.n_iter == 0):
-                #X_t = self.split_data(X_train, B[k])
-            #else:
-            X_t = self.data_fun(self.N_t, self.d, B[k])
+            if (self.n_iter == 0):
+                X_t = self.split_data(X_train, B[k])
+            else:
+                X_t = self.data_fun(self.N_t, self.d, B[k])
             #print(X_t.shape[0], 'k =', k)
             Y_t = self.fun(X_t)
 
-            model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, self.arg1, self.arg2, self.arg3, self.arg4, sigma_vals = self.sigma_vals, mu_vals = self.mu_vals).fit(X_t, Y_t.reshape(X_t.shape[0]))
+            model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, 
+                                 self.arg1[k], 
+                                 self.arg2[k], 
+                                 self.arg3[k], 
+                                 self.arg4[k], 
+                                 sigma_vals = self.sigma_vals, mu_vals = self.mu_vals).fit(X_t, Y_t.reshape(X_t.shape[0]))
             
             J_k = 1
             Jk_i_temp = []
@@ -285,10 +295,7 @@ class ME_PCE(BaseEstimator):
 
             Jk.append(J_k)
             model_local.append(model)
-            if model.a_hat.shape[0] == 0:
-                mean_local.append(float(model.a_full[0]))
-            else:
-                mean_local.append(float(model.a_hat[0]))
+            mean_local.append(float(model.a_hat[0]))
             v_local.append(np.sum(model.a_hat[1:]**2))
             a_local.append(model.a_hat)
             active_cols_local.append(model.active_cols)
