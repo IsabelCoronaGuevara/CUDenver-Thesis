@@ -165,7 +165,7 @@ class ME_PCE(BaseEstimator):
 
                     r.append(r_i)
 
-                if (eta_k**alpha*J_k >= theta1): #& (X_t.shape[0]/2**np.sum(theta2*np.max(r)<=r) >= size_restriction):
+                if (eta_k**alpha*J_k >= theta1[j]): #& (X_t.shape[0]/2**np.sum(theta2*np.max(r)<=r) >= size_restriction):
                     # If this isn't true then we don't split up B_k
                     #print('Splitting', 'time =', j)
 
@@ -173,13 +173,13 @@ class ME_PCE(BaseEstimator):
                     #print(theta2*np.max(r)<=r, 'k =', k)
 
                     for i in range(self.d):
-                        if (theta2*np.max(r)<=r[i]):
+                        if (theta2[j]*np.max(r)<=r[i]):
                             B_temp.append([[B[k][i][0], B[k][i][0] + (B[k][i][1]-B[k][i][0])/2], [B[k][i][0] + (B[k][i][1]-B[k][i][0])/2, B[k][i][1]]])
                         else:
                             B_temp.append([B[k][i], B[k][i]])
 
                     for i in range(self.d):
-                        if (theta2*np.max(r)<=r[i]):
+                        if (theta2[j]*np.max(r)<=r[i]):
                             T_p = i
                             break
 
@@ -187,25 +187,25 @@ class ME_PCE(BaseEstimator):
 
                     T_position = 0
                     # Fill B_new with the first element
-                    if (theta2*np.max(r)<=r[0]):
+                    if (theta2[j]*np.max(r)<=r[0]):
                         for m in range(int(2**(i+1)/2**T_p)):
-                            for l in range(int(2**np.sum((theta2*np.max(r)<=r))/(2**(i+1)/2**T_p))):
+                            for l in range(int(2**np.sum((theta2[j]*np.max(r)<=r))/(2**(i+1)/2**T_p))):
                                 B_new.append([B_temp[0][m%2]])
                     else:
-                        for l in range(int(2**np.sum((theta2*np.max(r)<=r)))):
+                        for l in range(int(2**np.sum((theta2[j]*np.max(r)<=r)))):
                             B_new.append([B_temp[0][0]])
 
                     # Fill in for the rest of the elements
                     for i in range(1,self.d):
                         t = 0
-                        if (theta2*np.max(r)<=r[i]):
+                        if (theta2[j]*np.max(r)<=r[i]):
                             for m in range(int(len(B_new)/2**T_position)):
                                 for l in range(int(2**T_position)):
                                     B_new[t].append(B_temp[i][m%2])
                                     t += 1
                             T_position += 1
                         else:
-                            for l in range(int(2**np.sum((theta2*np.max(r)<=r)))):
+                            for l in range(int(2**np.sum((theta2[j]*np.max(r)<=r)))):
                                 B_new[t].append(B_temp[i][0])
                                 t += 1
                     #print(B_new)

@@ -438,9 +438,15 @@ class VRVM_PCE(BaseEstimator):
 			self.iters = iters
 			self.elbo = elbo
             
-			self.active_cols = np.array(range(0,self.n))[self.z_sol>0.01]
-			self.a_hat = self.c_sol[self.active_cols,0]
-			self.n_star = self.active_cols.shape[0]
+			if (np.array(range(0,self.n))[self.z_sol>0.01]).shape[0] != 0:
+				self.active_cols = np.array(range(0,self.n))[self.z_sol>0.01]
+				self.a_hat = self.c_sol[self.active_cols,0]
+				self.n_star = self.active_cols.shape[0]
+			else:
+				self.active_cols = np.array(range(0,self.n))
+				self.a_hat = self.c_sol[:,0]
+				self.n_star = self.active_cols.shape[0]
+                
 			self.a_full = self.c_sol[:,0]
 			#print('n_star = ', self.n_star)
             
@@ -450,7 +456,7 @@ class VRVM_PCE(BaseEstimator):
 
 	def predict(self, X, sparse = True):
 		if sparse is True:
-			if self.n_star != 0:
+			if (np.array(range(0,self.n))[self.z_sol>0.01]).shape[0] != 0:
 				return self.basis(X)[:,self.active_cols]@self.c_sol[self.active_cols,0]
 			else:
 				return self.basis(X)@self.c_sol[:,0]
