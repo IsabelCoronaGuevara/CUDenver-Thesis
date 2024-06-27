@@ -10,13 +10,14 @@ from scipy.special import gamma
 import sys
 from sklearn.base import BaseEstimator
 from scipy.special import legendre
+from sklearn.metrics import mean_squared_error
 from aPCE import *
 from basis_functions import *
 
 class AFVB_PCE(BaseEstimator):
     
     
-    def __init__(self, PCE_method, d, p = 8, domain = None, aPCE_model = None, P = None, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000, sigma_vals = None, mu_vals = None):
+    def __init__(self, PCE_method = 'aPCE', d = 3, p = 8, domain = None, aPCE_model = None, P = None, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000, sigma_vals = None, mu_vals = None):
         """
         Initializes the object
         """
@@ -97,7 +98,7 @@ class AFVB_PCE(BaseEstimator):
         chi_all = []
         Br_all = []
         
-        Beta = 1
+        Beta = 0
         L_old = None
 
         Phi = Phi_in
@@ -184,10 +185,9 @@ class AFVB_PCE(BaseEstimator):
             ########################################################################################
             ############################### Save the optimal vectors ###############################
             ########################################################################################
-            if Beta == 1:
+            if Beta == 0:
                 Phi_full = Phi_in
                 a_full = a_r
-                a_all.append(a_full)
                 chi_all.append(chi_r)
                 Br_all.append(B_r)
                 
@@ -223,9 +223,10 @@ class AFVB_PCE(BaseEstimator):
 
             Beta += 1
         
-        max_beta = np.argmax(L_beta) + 1
+        max_beta = np.argmax(L_beta)
         
-        self.active_cols = col_full[max_beta-1]    
+        self.col_full = col_full
+        self.active_cols = col_full[max_beta]    
         self.Phi_hat = Phi_full[:, self.active_cols]
         self.a_hat = a_all[max_beta]
         self.Phi_full = Phi_full
@@ -234,6 +235,10 @@ class AFVB_PCE(BaseEstimator):
         self.chi = chi_all[max_beta]
         self.Br = Br_all[max_beta]
         self.chi_full = chi_all[0]
+        self.L_beta = L_beta
+        self.a_all = a_all
+        self.max_beta = max_beta
+
         
         #print('Beta_star = ', max_beta,'', 'n_star = ', self.n_star)
                 
@@ -244,5 +249,18 @@ class AFVB_PCE(BaseEstimator):
             return self.basis(X)[:,self.active_cols]@self.a_hat
         elif sparse is False:
             return self.basis(X)@self.a_full
+        
+        
+    #def get_params(self, deep=False):
+     #   return {'PCE_method': self.PCE_method, 'd': self.d, 'p': self.p, 'domain': self.domain, aPCE_model = None, P = None, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000, sigma_vals = None, mu_vals = None}
+
+    
+    def score(self, X, Y):
+
+        #if (self.n_star == self.n):
+        #    return -1*10000
+        #else:
+        return self.L_beta[self.max_beta]
+
 
 
