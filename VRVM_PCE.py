@@ -12,8 +12,6 @@ Contains classes for Chaos expansions, Exponential families (containing Beta, Be
 Optimizer for the standard RVM and sparse RVM.
 """
 
-__all__ = ['ChaosModel', 'ExponFam', 'VRVM_PCE']
-
 import numpy as np
 import math 
 import scipy.stats as st 
@@ -161,7 +159,7 @@ class VRVM_PCE(BaseEstimator):
 	# L component
 	_expL = None
 
-	def __init__(self, PCE_method, d, p = 8, domain = None, aPCE_model = None, P = None, omega_a = 10**(-6), omega_b = 10**(-6), tau_a = 10**(-6), tau_b = 10**(-6), pi_a = 0.2, pi_b = 1.0, sigma_vals = None, mu_vals = None):
+	def __init__(self, PCE_method, d, p = 8, domain = None, aPCE_model = None, P = None, omega_a = 1e-6, omega_b = 1e-6, tau_a = 1e-6, tau_b = 1e-6, pi_a = 0.2, pi_b = 1.0, tol = 1e-4, sigma_vals = None, mu_vals = None):
 		"""
 		Initializes the object
 		"""
@@ -171,6 +169,7 @@ class VRVM_PCE(BaseEstimator):
 		self.PCE_method = PCE_method
 		self.aPCE_model = aPCE_model
 		self.P = P
+		self.tol = tol
 		self.omega_a = omega_a
 		self.omega_b = omega_b
 		self.tau_a = tau_a
@@ -179,7 +178,7 @@ class VRVM_PCE(BaseEstimator):
 		self.pi_b = pi_b
 		self.sigma_vals = sigma_vals
 		self.mu_vals = mu_vals
-		self._prior_params = {'omega' : [self.omega_a, self.omega_b], 'tau': [self.tau_a, self.tau_b], 'pi': [self.pi_a, self.pi_b]}
+
         
 		if (PCE_method == 'aPCE'):
 			self.basis = basis(self.d, self.p, self.domain, self.aPCE_model, self.P).basis_aPCE
@@ -289,11 +288,12 @@ class VRVM_PCE(BaseEstimator):
 
 
 	def fit(self, X, Y):
-		tol = 1e-4
+		tol = self.tol
 		method = 'ascent'
 		self.d = X.shape[1]
 		self.K = X.shape[0]
 		sys.path.append('..')
+		self._prior_params = {'omega' : [self.omega_a, self.omega_b], 'tau': [self.tau_a, self.tau_b], 'pi': [self.pi_a, self.pi_b]}
 
 		data={'xi': X}
 		data['y'] = Y.reshape(self.K)
@@ -438,30 +438,29 @@ class VRVM_PCE(BaseEstimator):
 			self.iters = iters
 			self.elbo = elbo
             
-			if (np.array(range(0,self.n))[self.z_sol>0.01]).shape[0] != 0:
-				self.active_cols = np.array(range(0,self.n))[self.z_sol>0.01]
-				self.a_hat = self.c_sol[self.active_cols,0]
-				self.n_star = self.active_cols.shape[0]
-			else:
-				self.active_cols = np.array(range(0,self.n))
-				self.a_hat = self.c_sol[:,0]
-				self.n_star = self.active_cols.shape[0]
+			self.active_cols = np.array(range(0,self.n))[self.z_sol>0.01]
+			self.a_hat = self.c_sol[self.active_cols,0]
+			self.n_star = self.active_cols.shape[0]
+            
+			if self.n_star == 0:
+				print('no active cols')
+
                 
 			self.a_full = self.c_sol[:,0]
 			#print('n_star = ', self.n_star)
             
-			return self
+		return self
 
 		#elif method == 'stoch_ascent':
 
 	def predict(self, X, sparse = True):
 		if sparse is True:
-			if (np.array(range(0,self.n))[self.z_sol>0.01]).shape[0] != 0:
-				return self.basis(X)[:,self.active_cols]@self.c_sol[self.active_cols,0]
+			if (self.n_star != 0):
+				return self.basis(X)[:,self.active_cols]@self.a_hat
 			else:
-				return self.basis(X)@self.c_sol[:,0]
-		else:
-			return self.basis(X)@self.c_sol[:,0]
+				return np.array([np.nan]*X.shape[0])
+		elif sparse is False:
+			return self.basis(X)@self.a_full
 # In[ ]:
 
 
