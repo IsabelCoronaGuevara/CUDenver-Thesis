@@ -22,7 +22,7 @@ class ME_PCE(BaseEstimator):
     
     """
     
-    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, data_fun, N_t, N_p, theta1 = 0.00001, theta2 = 0.00001, alpha = 0.5, arg1 = [0.01], arg2 = [0.0001], arg3 = [0.01], arg4= [0.0001], sigma_vals = None, mu_vals = None, n_iter = 2):
+    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, data_fun, N_t, N_p, theta1 = 0.00001, theta2 = 0.00001, alpha = 0.5, arg1 = 0.01, arg2 = 0.0001, arg3 = 0.01, arg4= 0.0001, sigma_vals = None, mu_vals = None, n_iter = 2, B_split_in = None):
         """
         PCE_method: 'aPCE' or 'aPCE_Stieltjes' or 'PCE_Legendre' or 'PCE_Hermite'
         alg_mod: AFVB_PCE or VRVM_PCE
@@ -49,6 +49,7 @@ class ME_PCE(BaseEstimator):
         self.n_iter = n_iter
         self.N_p = N_p
         self.N_t = N_t
+        self.B_split_in = B_split_in
         
     def multivariate_pce_index(self, d, max_deg):
         """
@@ -134,10 +135,10 @@ class ME_PCE(BaseEstimator):
                 Y_t = self.fun(X_t)
 
                 model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, 
-                                     self.arg1[k], 
-                                     self.arg2[k], 
-                                     self.arg3[k], 
-                                     self.arg4[k], 
+                                     self.arg1, 
+                                     self.arg2,
+                                     self.arg3,
+                                     self.arg4, 
                                      sigma_vals = self.sigma_vals, mu_vals = self.mu_vals).fit(X_t, Y_t.reshape(X_t.shape[0]))
 
                 a_vec = model.a_full
@@ -247,7 +248,7 @@ class ME_PCE(BaseEstimator):
         n_star_local = []
         
         if (self.n_iter == 0):
-            B = self.B_init
+            B = self.B_split_in
         else:
             B = self.split_domain(self.N_t, self.N_p, self.theta1, self.theta2, self.alpha, self.n_iter)
 
@@ -278,22 +279,22 @@ class ME_PCE(BaseEstimator):
             Y_t = self.fun(X_t)
 
             model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, 
-                                 self.arg1[k], 
-                                 self.arg2[k], 
-                                 self.arg3[k], 
-                                 self.arg4[k], 
+                                 self.arg1, 
+                                 self.arg2,
+                                 self.arg3,
+                                 self.arg4, 
                                  sigma_vals = self.sigma_vals, mu_vals = self.mu_vals).fit(X_t, Y_t.reshape(X_t.shape[0]))
             
-            J_k = 1
+            Jk_temp = 1
             Jk_i_temp = []
             for i in range(self.d):
                 Bk_trans = self.map_domain_to_negOne_One(B[k], self.B_init)
-                J_k *= (Bk_trans[i][1] - Bk_trans[i][0])/2
+                Jk_temp *= (Bk_trans[i][1] - Bk_trans[i][0])/2
                 Jk_i_temp.append((Bk_trans[i][1] - Bk_trans[i][0])/2)
 
             Jk_i.append(Jk_i_temp)
 
-            Jk.append(J_k)
+            Jk.append(Jk_temp)
             model_local.append(model)
             mean_local.append(float(model.a_hat[0]))
             v_local.append(np.sum(model.a_hat[1:]**2))
