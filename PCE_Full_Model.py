@@ -95,9 +95,10 @@ class PCE_Full_Model(BaseEstimator):
         col_full.append(col)
         a_all = []
         chi_all = []
-        Br_all = []
+        B_all = []
+        D_all = []
         
-        Beta = 1
+        Beta = 0
         L_old = None
 
         Phi = Phi_in
@@ -184,12 +185,9 @@ class PCE_Full_Model(BaseEstimator):
             ########################################################################################
             ############################### Save the optimal vectors ###############################
             ########################################################################################
-            if Beta == 1:
+            if Beta == 0:
                 Phi_full = Phi_in
                 a_full = a_r
-                a_all.append(a_full)
-                chi_all.append(chi_r)
-                Br_all.append(B_r)
                 
 
             #if k == 1:    
@@ -211,7 +209,9 @@ class PCE_Full_Model(BaseEstimator):
             
             a_all.append(a_r)
             chi_all.append(chi_r)
-            Br_all.append(B_r)
+            B_all.append(B_r)
+            D_all.append(D_r)
+            
          
             ########################################################################################
             ########################################################################################
@@ -223,26 +223,31 @@ class PCE_Full_Model(BaseEstimator):
 
             Beta += 1
         
-        max_beta = np.argmax(L_beta) + 1
+        max_beta = np.argmax(L_beta)
         
-        self.active_cols = col_full[max_beta-1]    
+        self.active_cols = col_full[max_beta]    
         self.Phi_hat = Phi_full[:, self.active_cols]
         self.a_hat = a_all[max_beta]
         self.Phi_full = Phi_full
         self.a_full = a_full
         self.n_star = self.active_cols.shape[0]
         self.chi = chi_all[max_beta]
-        self.Br = Br_all[max_beta]
+        self.A = A_r
+        self.C = C_r
+        self.B = float(B_all[max_beta])
+        self.D = D_all[max_beta]
         self.chi_full = chi_all[0]
+        self.L_beta = L_beta
         
         #print('Beta_star = ', max_beta,'', 'n_star = ', self.n_star)
                 
         return self
     
     def predict(self, X, sparse = True):
-        if sparse is True:
-            return self.basis(X)[:,self.active_cols]@self.a_hat
-        elif sparse is False:
-            return self.basis(X)@self.a_full
+
+        return self.basis(X)[:,self.active_cols]@self.a_full
 
 
+    #def score(self, X, Y):
+
+     #   return self.L_beta[0]
