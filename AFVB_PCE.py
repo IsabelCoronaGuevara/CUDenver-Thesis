@@ -96,7 +96,8 @@ class AFVB_PCE(BaseEstimator):
         col_full.append(col)
         a_all = []
         chi_all = []
-        Br_all = []
+        B_all = []
+        D_all = []
         
         Beta = 0
         L_old = None
@@ -188,8 +189,6 @@ class AFVB_PCE(BaseEstimator):
             if Beta == 0:
                 Phi_full = Phi_in
                 a_full = a_r
-                chi_all.append(chi_r)
-                Br_all.append(B_r)
                 
 
             #if k == 1:    
@@ -211,7 +210,8 @@ class AFVB_PCE(BaseEstimator):
             
             a_all.append(a_r)
             chi_all.append(chi_r)
-            Br_all.append(B_r)
+            B_all.append(B_r)
+            D_all.append(D_r)
          
             ########################################################################################
             ########################################################################################
@@ -233,7 +233,10 @@ class AFVB_PCE(BaseEstimator):
         self.a_full = a_full
         self.n_star = self.active_cols.shape[0]
         self.chi = chi_all[max_beta]
-        self.Br = Br_all[max_beta]
+        self.A = A_r
+        self.C = C_r
+        self.B = float(B_all[max_beta])
+        self.D = D_all[max_beta]
         self.chi_full = chi_all[0]
         self.L_beta = L_beta
         self.a_all = a_all
@@ -251,16 +254,17 @@ class AFVB_PCE(BaseEstimator):
             return self.basis(X)@self.a_full
         
         
+        
     #def get_params(self, deep=False):
      #   return {'PCE_method': self.PCE_method, 'd': self.d, 'p': self.p, 'domain': self.domain, aPCE_model = None, P = None, A_0 = 0.01, B_0 = 0.0001, C_0 = 0.01, D_0 = 0.0001, T_L = 0.001, eps = 1000, sigma_vals = None, mu_vals = None}
 
     
-    def score(self, X, Y):
+   # def score(self, X, Y):
 
-        #if (self.n_star == self.n):
-        #    return -1*10000
+        #if (self.n_star == 26):
+    #    return -1*np.abs(self.n_star - 26)
         #else:
-        return self.L_beta[self.max_beta]
+            #return self.n_star - 26 #self.L_beta[self.max_beta]
 
 
 
