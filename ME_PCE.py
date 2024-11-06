@@ -22,7 +22,7 @@ class ME_PCE(BaseEstimator):
     
     """
     
-    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, data_fun, N_t, N_p, theta1 = 0.00001, theta2 = 0.00001, alpha = 0.5, arg1 = 0.01, arg2 = 0.0001, arg3 = 0.01, arg4= 0.0001, sigma_vals = None, mu_vals = None, n_iter = 2, B_split_in = None):
+    def __init__(self, PCE_method, d, p, B_init, fun, alg_mod, data_fun, N_t, N_p, theta1 = 0.00001, theta2 = 0.00001, alpha = 0.5, arg1 = 0.01, arg2 = 0.0001, arg3=0.01, arg4= 0.0001, sigma_vals = None, mu_vals = None, n_iter = 2, B_split_in = None, X_p = None):
         """
         PCE_method: 'aPCE' or 'aPCE_Stieltjes' or 'PCE_Legendre' or 'PCE_Hermite'
         alg_mod: AFVB_PCE or VRVM_PCE
@@ -50,6 +50,7 @@ class ME_PCE(BaseEstimator):
         self.N_p = N_p
         self.N_t = N_t
         self.B_split_in = B_split_in
+        self.X_p = X_p
         
     def multivariate_pce_index(self, d, max_deg):
         """
@@ -224,6 +225,7 @@ class ME_PCE(BaseEstimator):
                 break
 
             B = B_k.copy()
+        print(len(B))
             
         return np.array(B)
 
@@ -246,6 +248,8 @@ class ME_PCE(BaseEstimator):
         Jk_i = []
         Jk = []
         n_star_local = []
+        X_t_full = []
+        X_p_full = []
         
         if (self.n_iter == 0):
             B = self.B_split_in
@@ -253,29 +257,49 @@ class ME_PCE(BaseEstimator):
             B = self.split_domain(self.N_t, self.N_p, self.theta1, self.theta2, self.alpha, self.n_iter)
 
         for k in range(len(B)):
-            
-            if (self.PCE_method == 'aPCE'):    
-                X_p = self.data_fun(self.N_p, self.d, B[k])
-                mod = aPCE(X_p, self.p)
-                mod_local.append(mod)
-                P = mod.Create_Orthonormal_Polynomials(self.p)
-                P_local.append(P)
-                
-            elif (self.PCE_method == 'aPCE_Stieltjes'):    
-                X_p = self.data_fun(self.N_p, self.d, B[k])
-                mod = aPCE(X_p, self.p)
-                mod_local.append(mod)
-                P = mod.Create_Orthonormal_Polynomials_Stieltjes(self.p)
-                P_local.append(P)
-            else:
-                mod = None
-                P = None
+            if (self.n_iter != 0):
+                if (self.PCE_method == 'aPCE'):    
+                    X_p = self.data_fun(self.N_p, self.d, B[k])
+                    mod = aPCE(X_p, self.p)
+                    mod_local.append(mod)
+                    P = mod.Create_Orthonormal_Polynomials(self.p)
+                    P_local.append(P)
+                    X_p_full.append(X_p)
+
+                elif (self.PCE_method == 'aPCE_Stieltjes'):    
+                    X_p = self.data_fun(self.N_p, self.d, B[k])
+                    mod = aPCE(X_p, self.p)
+                    mod_local.append(mod)
+                    P = mod.Create_Orthonormal_Polynomials_Stieltjes(self.p)
+                    P_local.append(P)
+                    X_p_full.append(X_p)
+                else:
+                    mod = None
+                    P = None
+            if (self.n_iter == 0):
+                if (self.PCE_method == 'aPCE'):    
+                    mod = aPCE(self.X_p[k], self.p)
+                    mod_local.append(mod)
+                    P = mod.Create_Orthonormal_Polynomials(self.p)
+                    P_local.append(P)
+
+                elif (self.PCE_method == 'aPCE_Stieltjes'):    
+                    mod = aPCE(self.X_p[k], self.p)
+                    mod_local.append(mod)
+                    P = mod.Create_Orthonormal_Polynomials_Stieltjes(self.p)
+                    P_local.append(P)
+                else:
+                    mod = None
+                    P = None
          
             if (self.n_iter == 0):
                 X_t = self.split_data(X_train, B[k])
+                print(X_t.shape[0], 'k =', k)
             else:
                 X_t = self.data_fun(self.N_t, self.d, B[k])
-            #print(X_t.shape[0], 'k =', k)
+                X_t_full.append(X_t)
+                print(X_t.shape[0], 'k =', k)
+                
             Y_t = self.fun(X_t)
 
             model = self.alg_mod(self.PCE_method, self.d, self.p, B[k], mod, P, 
@@ -315,6 +339,9 @@ class ME_PCE(BaseEstimator):
         self.n_star_local = n_star_local
         self.a_local_full = a_local_full
         self.Jk_i = np.array(Jk_i)
+        self.X_t = X_t_full
+        if (self.n_iter != 0):
+            self.X_p = X_p_full
         
         return self
         
